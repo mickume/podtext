@@ -70,20 +70,20 @@ Implementation follows the pipeline architecture: project setup → core modules
     - **Property 9: Language Check Bypass**
     - **Validates: Requirements 3.2, 3.3, 4.2, 5.3**
 
-- [ ] 5. Claude API Integration
-  - [ ] 5.1 Implement Prompt Loader
+- [x] 5. Claude API Integration
+  - [x] 5.1 Implement Prompt Loader
     - Create prompts.py with load_prompts function
     - Load prompts from markdown file at runtime
     - Fall back to built-in defaults if file missing/malformed
     - _Requirements: 9.1, 9.2, 9.3_
-  
-  - [ ] 5.2 Implement Claude API Client
+
+  - [x] 5.2 Implement Claude API Client
     - Create claude.py with detect_advertisements and analyze_content functions
     - Use loaded prompts for API calls
     - Handle API unavailability gracefully
     - _Requirements: 6.1, 6.4, 7.1_
-  
-  - [ ] 5.3 Write property tests for Claude Integration
+
+  - [x] 5.3 Write property tests for Claude Integration
     - **Property 13: Prompt Runtime Loading**
     - **Validates: Requirements 9.2**
 
