@@ -127,19 +127,19 @@ Implementation follows the pipeline architecture: project setup → core modules
     - Handle errors at each stage appropriately
     - _Requirements: 3.1, 4.1, 6.1, 7.1_
 
-- [ ] 9. Final Integration
-  - [ ] 9.1 Create Entry Point
+- [x] 9. Final Integration
+  - [x] 9.1 Create Entry Point
     - Configure console_scripts in pyproject.toml
     - Ensure `podtext` command is available after install
     - _Requirements: 10.2_
   
-  - [ ] 9.2 Write integration tests
+  - [x] 9.2 Write integration tests
     - Test end-to-end flow with mocked external APIs
     - Test config file creation on first run
     - Test error handling paths
     - _Requirements: 10.4_
 
-- [ ] 10. Final Checkpoint
+- [x] 10. Final Checkpoint
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
