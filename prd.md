@@ -1,7 +1,8 @@
-## Product requiremnet
+# Product requiremnet
 
 A command-line tool that downloads podcast episodes from RSS feeds and transcribes them using Whisper, optimized for Apple Silicon. Use Claude AI and its API for further processing and analysis of the transcribed podcast episode.
 
+## Requirements
 How podtext works:
 
 1) discover podcast feed
@@ -37,6 +38,7 @@ Requirements
 - podtext uses a TOML configuration file in the current directory (.podtext/config) or ($HOME/.podtext/config). If $HOME/.podtext/config does not exist, create it on startup.
 - Use extensive unit test to verify that the implementation meets the requirements.
 
-Implementation planning
+## Implementation planning
 - Create a requirements document from this PRD. Use the EARS (Easy Approach to Requirements Syntax) pattern for the requirements document. Then create design document but don't go to overboard with details in the design document. After that create a detailled tasks document that allows to track the progress of the implementation.
 
+## Clarifications
