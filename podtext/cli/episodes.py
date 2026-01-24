@@ -37,7 +37,7 @@ def episodes(ctx: click.Context, feed_url: str, limit: int | None) -> None:
     service = PodcastService()
 
     try:
-        click.echo(f"Fetching episodes...\n")
+        click.echo("Fetching episodes...\n")
         episode_list = service.get_episodes(feed_url, limit)
         podcast_name = service.get_podcast_name(feed_url)
     except PodcastError as e:
@@ -61,5 +61,5 @@ def episodes(ctx: click.Context, feed_url: str, limit: int | None) -> None:
         click.echo()
 
     # Show usage hint
-    click.echo(f"To transcribe an episode, use:")
-    click.echo(f"  podtext transcribe \"{feed_url}\" <INDEX>")
+    click.echo("To transcribe an episode, use:")
+    click.echo(f'  podtext transcribe "{feed_url}" <INDEX>')

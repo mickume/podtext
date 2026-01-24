@@ -3,7 +3,7 @@
 import re
 
 from podtext.clients.claude import ClaudeClient
-from podtext.config.manager import AnalysisPrompts, Config
+from podtext.config.manager import Config
 from podtext.models.transcript import AdSegment, Analysis, Transcript
 
 
@@ -89,7 +89,7 @@ class AnalyzerService:
         try:
             response = self.claude.detect_advertising(self.prompts.advertising, text)
             return self._parse_ad_response(response, text)
-        except Exception as e:
+        except Exception:
             # Non-fatal - continue without ad detection
             return []
 

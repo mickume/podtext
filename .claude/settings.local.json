@@ -5,7 +5,11 @@
       "Bash(uv run pytest:*)",
       "Bash(uv run:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(uv pip install:*)"
     ]
   }
 }

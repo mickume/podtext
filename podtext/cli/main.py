@@ -2,8 +2,10 @@
 
 import click
 
+from podtext.cli.episodes import episodes
+from podtext.cli.search import search
+from podtext.cli.transcribe import transcribe
 from podtext.config.manager import ConfigManager
-
 
 # Store config in context for subcommands
 pass_config = click.make_pass_decorator(ConfigManager, ensure=True)
@@ -20,11 +22,6 @@ def cli(ctx: click.Context) -> None:
     ctx.ensure_object(dict)
     ctx.obj["config_manager"] = ConfigManager()
 
-
-# Import and register subcommands
-from podtext.cli.episodes import episodes
-from podtext.cli.search import search
-from podtext.cli.transcribe import transcribe
 
 cli.add_command(search)
 cli.add_command(episodes)
