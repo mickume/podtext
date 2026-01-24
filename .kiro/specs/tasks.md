@@ -108,20 +108,20 @@ Implementation follows the pipeline architecture: project setup → core modules
 - [x] 7. Checkpoint - Core Modules Complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. CLI Interface
-  - [ ] 8.1 Implement CLI Commands
+- [x] 8. CLI Interface
+  - [x] 8.1 Implement CLI Commands
     - Create cli.py with Click command group
     - Implement `search` command with --limit option
     - Implement `episodes` command with --limit option
     - Implement `transcribe` command with --skip-language-check flag
     - _Requirements: 1.2, 1.3, 1.4, 2.2, 2.3, 2.4_
   
-  - [ ] 8.2 Write property tests for CLI Display
+  - [x] 8.2 Write property tests for CLI Display
     - **Property 2: Search Result Display Completeness**
     - **Property 3: Episode Display Completeness**
     - **Validates: Requirements 1.2, 2.2**
   
-  - [ ] 8.3 Wire Pipeline Together
+  - [x] 8.3 Wire Pipeline Together
     - Create pipeline.py to orchestrate full transcription flow
     - Connect: download → transcribe → analyze → output
     - Handle errors at each stage appropriately
