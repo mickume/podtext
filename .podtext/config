@@ -1,0 +1,10 @@
+[api]
+anthropic_key = ""
+
+[storage]
+media_dir = ".podtext/downloads/"
+output_dir = ".podtext/output/"
+temp_storage = false
+
+[whisper]
+model = "base"
