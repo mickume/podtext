@@ -42,3 +42,32 @@ Requirements
 - Create a requirements document from this PRD. Use the EARS (Easy Approach to Requirements Syntax) pattern for the requirements document. Then create design document but don't go to overboard with details in the design document. After that create a detailled tasks document that allows to track the progress of the implementation.
 
 ## Clarifications
+
+On CLI
+Command structure
+-> separate sub-commands
+
+Index persistence
+-> session relative
+
+Output location
+-> configurable in the config file
+-> media cleanup: clean-up by default, but configurable
+
+Non_english content: warning, but continue
+
+Advertising handling: remove from the transcript and replace with a text, e.g "ADVERTISING REMOVED"
+
+Whisper model size: default='base', configurable
+
+LLM prompts file: in .podtext/ alongside config.toml, create on first execution if it does not exist. expected name: ANALYSIS.md
+
+Config content: use your best judgement
+
+Transcription output filename: <podcast-name>/<episode-title>.md
+Config file extension: .podtext/config.toml
+Claude API model: claude-sonnet-4-20250514, configurable
+Subcommand names:
+- podtext search <term>                                                                                                                                                                                                                                                      
+- podtext episodes <feed-url>                                                                                                                                                                                                                                                     
+- podtext transcribe <feed-url> <index>
