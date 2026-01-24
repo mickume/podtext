@@ -211,6 +211,57 @@ class TestTranscribeCommand:
         assert result.exit_code != 0
         assert "out of range" in result.output
 
+    @patch("podtext.cli.transcribe.AnalyzerService")
+    @patch("podtext.cli.transcribe.MarkdownWriter")
+    @patch("podtext.cli.transcribe.TranscriberService")
+    @patch("podtext.cli.transcribe.PodcastService")
+    def test_transcribe_handles_analyzer_error(
+        self, MockPodcast, MockTranscriber, MockWriter, MockAnalyzer, runner, mock_config, tmp_path
+    ):
+        """Test transcribe handles AnalyzerError gracefully."""
+        import os
+        from podtext.models.transcript import Transcript
+        from podtext.services.analyzer import AnalyzerError
+
+        # Setup mocks
+        mock_podcast = MockPodcast.return_value
+        mock_podcast.get_episode_by_index.return_value = Episode(
+            title="Test Episode",
+            pub_date=datetime(2024, 3, 20),
+            media_url="https://example.com/ep.mp3",
+        )
+        mock_podcast.get_podcast_name.return_value = "Test Podcast"
+
+        mock_transcriber = MockTranscriber.return_value
+        mock_transcriber.download_media.return_value = tmp_path / "test.mp3"
+        mock_transcriber.transcribe.return_value = Transcript(
+            text="Transcript text.", language="en"
+        )
+
+        # Make analyzer raise AnalyzerError
+        mock_analyzer = MockAnalyzer.return_value
+        mock_analyzer.analyze.side_effect = AnalyzerError("Failed to generate summary")
+
+        mock_writer = MockWriter.return_value
+        mock_writer.write.return_value = tmp_path / "output.md"
+
+        # Set API key so analysis is attempted
+        os.environ["ANTHROPIC_API_KEY"] = "test-key"
+
+        try:
+            with runner.isolated_filesystem(temp_dir=mock_config):
+                result = runner.invoke(
+                    cli,
+                    ["transcribe", "https://example.com/feed.xml", "1"],
+                )
+
+            # Should succeed but show warning about failed analysis
+            assert result.exit_code == 0
+            assert "Analysis failed" in result.output
+            assert "Success" in result.output
+        finally:
+            del os.environ["ANTHROPIC_API_KEY"]
+
 
 class TestCLIHelp:
     """Tests for CLI help output."""

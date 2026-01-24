@@ -9,7 +9,9 @@
       "Bash(tree:*)",
       "Bash(find:*)",
       "Bash(wc:*)",
-      "Bash(uv pip install:*)"
+      "Bash(uv pip install:*)",
+      "Bash(xargs cat:*)",
+      "Bash(head:*)"
     ]
   }
 }

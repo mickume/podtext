@@ -5,7 +5,7 @@ import click
 from podtext.clients.claude import ClaudeError
 from podtext.config.manager import ConfigManager
 from podtext.output.markdown import MarkdownWriter
-from podtext.services.analyzer import AnalyzerService
+from podtext.services.analyzer import AnalyzerError, AnalyzerService
 from podtext.services.podcast import PodcastError, PodcastService
 from podtext.services.transcriber import TranscriberService, TranscriptionError
 
@@ -122,7 +122,7 @@ def transcribe(
                 analyzer = AnalyzerService(config)
                 analysis = analyzer.analyze(transcript)
                 click.echo("Analysis complete.")
-            except ClaudeError as e:
+            except (ClaudeError, AnalyzerError) as e:
                 click.echo(
                     click.style(f"Warning: Analysis failed: {e}", fg="yellow")
                 )

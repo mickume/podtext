@@ -128,22 +128,81 @@ class ClaudeClient:
 
     def _parse_bullet_list(self, text: str) -> list[str]:
         """Parse a bullet-point list from text."""
+        import re
+
         items = []
         for line in text.split("\n"):
             line = line.strip()
-            if line.startswith(("-", "*", "•")):
-                item = line.lstrip("-*• ").strip()
+            # Skip empty lines and headers
+            if not line or line.startswith("#"):
+                continue
+
+            item = None
+            # Handle bullet points (-, *, •) but not ** which is bold
+            if re.match(r"^[-•]\s", line) or (line.startswith("* ") and not line.startswith("**")):
+                item = re.sub(r"^[-*•]\s*", "", line).strip()
+            # Handle numbered lists (1. item, 2. item, 1) item)
+            elif re.match(r"^\d+[.)]\s", line):
+                item = re.sub(r"^\d+[.)]\s*", "", line).strip()
+
+            if item:
+                # Remove markdown bold/italic markers
+                item = self._strip_markdown(item)
                 if item:
                     items.append(item)
-            elif line and not any(line.startswith(c) for c in "#123456789"):
-                # Include non-list lines that aren't headers or numbered items
-                items.append(line)
         return items
 
     def _parse_comma_list(self, text: str) -> list[str]:
         """Parse a comma-separated list from text."""
+        import re
+
+        # Split into lines and filter out headers/preamble
+        lines = text.strip().split("\n")
+        filtered_lines = []
+        for line in lines:
+            line = line.strip()
+            # Skip markdown headers
+            if line.startswith("#"):
+                continue
+            # Skip common preamble lines
+            if re.match(r"^(here are|keywords?|the keywords?)[^:]*:", line, re.IGNORECASE):
+                continue
+            # Skip empty lines
+            if not line:
+                continue
+            filtered_lines.append(line)
+
+        # Check if response uses bullet points instead of commas
+        bullet_lines = [ln for ln in filtered_lines if ln.startswith(("-", "*", "•"))]
+        if len(bullet_lines) > len(filtered_lines) // 2:
+            # Mostly bullet points, parse as bullet list
+            return self._parse_bullet_list("\n".join(filtered_lines))
+
         # Handle multi-line responses by joining
-        text = " ".join(text.split("\n"))
+        text = " ".join(filtered_lines)
+
+        # Remove markdown formatting
+        text = self._strip_markdown(text)
+
         # Split by comma and clean up
-        items = [item.strip() for item in text.split(",")]
-        return [item for item in items if item]
+        items = []
+        for item in text.split(","):
+            item = item.strip()
+            # Skip items that look like headers or preamble
+            if item and not item.endswith(":") and len(item) < 100:
+                items.append(item)
+
+        return items
+
+    def _strip_markdown(self, text: str) -> str:
+        """Remove common markdown formatting from text."""
+        import re
+        # Remove bold (**text** or __text__)
+        text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+        text = re.sub(r"__([^_]+)__", r"\1", text)
+        # Remove italic (*text* or _text_)
+        text = re.sub(r"\*([^*]+)\*", r"\1", text)
+        text = re.sub(r"_([^_]+)_", r"\1", text)
+        # Remove inline code (`text`)
+        text = re.sub(r"`([^`]+)`", r"\1", text)
+        return text.strip()
