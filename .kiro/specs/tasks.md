@@ -25,26 +25,26 @@ Implementation follows the pipeline architecture: project setup → core modules
     - **Property 12: Environment Variable Precedence**
     - **Validates: Requirements 8.1, 8.2, 8.5**
 
-- [ ] 2. Discovery Module
-  - [ ] 2.1 Implement iTunes API Client
+- [x] 2. Discovery Module
+  - [x] 2.1 Implement iTunes API Client
     - Create itunes.py with search_podcasts function
     - Parse JSON response into PodcastSearchResult objects
     - Handle API errors gracefully
     - _Requirements: 1.1, 1.5_
   
-  - [ ] 2.2 Implement RSS Feed Parser
+  - [x] 2.2 Implement RSS Feed Parser
     - Create rss.py with parse_feed function
     - Extract episode info (title, pub_date, media_url)
     - Assign index numbers to episodes
     - Handle invalid/unreachable feeds
     - _Requirements: 2.1, 2.5_
   
-  - [ ] 2.3 Write property tests for Discovery Module
+  - [x] 2.3 Write property tests for Discovery Module
     - **Property 1: Result Limiting**
     - **Property 4: RSS Parsing Validity**
     - **Validates: Requirements 1.3, 2.1, 2.3**
 
-- [ ] 3. Checkpoint - Discovery Module Complete
+- [x] 3. Checkpoint - Discovery Module Complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 4. Media and Transcription Module
