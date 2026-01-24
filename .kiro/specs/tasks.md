@@ -47,15 +47,15 @@ Implementation follows the pipeline architecture: project setup → core modules
 - [x] 3. Checkpoint - Discovery Module Complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Media and Transcription Module
-  - [ ] 4.1 Implement Media Downloader
+- [x] 4. Media and Transcription Module
+  - [x] 4.1 Implement Media Downloader
     - Create downloader.py with download_media function
     - Store files in configured directory
     - Support temporary storage with cleanup
     - Handle download failures
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
   
-  - [ ] 4.2 Implement MLX-Whisper Transcriber
+  - [x] 4.2 Implement MLX-Whisper Transcriber
     - Create transcriber.py with transcribe function
     - Use configured Whisper model
     - Extract paragraph boundaries from Whisper output
@@ -63,7 +63,7 @@ Implementation follows the pipeline architecture: project setup → core modules
     - Support skip-language-check flag
     - _Requirements: 4.1, 4.2, 4.3, 5.1, 5.2, 5.3_
   
-  - [ ] 4.3 Write property tests for Media/Transcription
+  - [x] 4.3 Write property tests for Media/Transcription
     - **Property 5: Media Storage Location**
     - **Property 6: Temporary File Cleanup**
     - **Property 7: Config Model Propagation**
