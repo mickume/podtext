@@ -1,0 +1,26 @@
+# podtext configuration file
+
+[general]
+# Directory where transcripts will be saved
+output_dir = "./transcripts"
+
+# Delete media files after successful transcription
+cleanup_media = true
+
+[whisper]
+# MLX-Whisper model size: tiny, base, small, medium, large
+model = "base"
+
+[claude]
+# Claude API model to use for analysis
+model = "claude-sonnet-4-20250514"
+
+# API key (leave empty to use ANTHROPIC_API_KEY environment variable)
+api_key = ""
+
+[defaults]
+# Default number of search results to show
+search_limit = 10
+
+# Default number of episodes to show
+episode_limit = 10
