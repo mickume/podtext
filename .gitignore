@@ -207,3 +207,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project specific
+transcripts/
+*.mp3
+*.mp4
+*.m4a
+*.wav
+*.webm
+.podtext/

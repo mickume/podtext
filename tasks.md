@@ -10,144 +10,144 @@ This document tracks implementation progress. Mark tasks with:
 ## Phase 1: Project Setup
 
 ### 1.1 Repository & Environment
-- [ ] Initialize Python project structure with `pyproject.toml`
-- [ ] Configure uv/pip for dependency management
-- [ ] Set up virtual environment requirements
-- [ ] Create package structure (`podtext/` with submodules)
-- [ ] Add `.gitignore` for Python projects
+- [x] Initialize Python project structure with `pyproject.toml`
+- [x] Configure uv/pip for dependency management
+- [x] Set up virtual environment requirements
+- [x] Create package structure (`podtext/` with submodules)
+- [x] Add `.gitignore` for Python projects
 
 ### 1.2 Dependencies
-- [ ] Add core dependencies: click, feedparser, httpx, anthropic
-- [ ] Add mlx-whisper for transcription
-- [ ] Add tomli (or use tomllib for 3.11+), pyyaml
-- [ ] Add development dependencies: pytest, pytest-cov, ruff
+- [x] Add core dependencies: click, feedparser, httpx, anthropic
+- [x] Add mlx-whisper for transcription
+- [x] Add tomli (or use tomllib for 3.11+), pyyaml
+- [x] Add development dependencies: pytest, pytest-cov, ruff
 
 ---
 
 ## Phase 2: Configuration System
 
 ### 2.1 Config Manager
-- [ ] Implement `config/defaults.py` with default values
-- [ ] Implement `config/manager.py` for TOML loading
-- [ ] Implement config search order (local → home)
-- [ ] Implement auto-creation of `$HOME/.podtext/config.toml`
-- [ ] Implement loading of `ANALYSIS.md` prompts file
-- [ ] Add unit tests for config loading and defaults
+- [x] Implement `config/defaults.py` with default values
+- [x] Implement `config/manager.py` for TOML loading
+- [x] Implement config search order (local → home)
+- [x] Implement auto-creation of `$HOME/.podtext/config.toml`
+- [x] Implement loading of `ANALYSIS.md` prompts file
+- [x] Add unit tests for config loading and defaults
 
 ### 2.2 Default Files
-- [ ] Create default `config.toml` template
-- [ ] Create default `ANALYSIS.md` with prompt templates
+- [x] Create default `config.toml` template
+- [x] Create default `ANALYSIS.md` with prompt templates
 
 ---
 
 ## Phase 3: Data Models
 
 ### 3.1 Core Models
-- [ ] Implement `models/podcast.py` (Podcast, Episode dataclasses)
-- [ ] Implement `models/transcript.py` (Transcript, Analysis dataclasses)
-- [ ] Add unit tests for model serialization
+- [x] Implement `models/podcast.py` (Podcast, Episode dataclasses)
+- [x] Implement `models/transcript.py` (Transcript, Analysis dataclasses)
+- [x] Add unit tests for model serialization
 
 ---
 
 ## Phase 4: External Clients
 
 ### 4.1 iTunes Client
-- [ ] Implement `clients/itunes.py` with search functionality
-- [ ] Handle HTTP errors and timeouts
-- [ ] Parse JSON response to Podcast objects
-- [ ] Add unit tests with mocked responses
+- [x] Implement `clients/itunes.py` with search functionality
+- [x] Handle HTTP errors and timeouts
+- [x] Parse JSON response to Podcast objects
+- [x] Add unit tests with mocked responses
 
 ### 4.2 Claude Client
-- [ ] Implement `clients/claude.py` wrapper
-- [ ] Handle API key from config or environment variable
-- [ ] Implement prompt execution method
-- [ ] Handle API errors and rate limits
-- [ ] Add unit tests with mocked API
+- [x] Implement `clients/claude.py` wrapper
+- [x] Handle API key from config or environment variable
+- [x] Implement prompt execution method
+- [x] Handle API errors and rate limits
+- [x] Add unit tests with mocked API
 
 ---
 
 ## Phase 5: Core Services
 
 ### 5.1 Podcast Service
-- [ ] Implement `services/podcast.py`
-- [ ] Implement podcast search (via iTunes client)
-- [ ] Implement RSS feed fetching with feedparser
-- [ ] Implement episode extraction and metadata parsing
-- [ ] Handle various RSS feed formats
-- [ ] Add unit tests with sample RSS feeds
+- [x] Implement `services/podcast.py`
+- [x] Implement podcast search (via iTunes client)
+- [x] Implement RSS feed fetching with feedparser
+- [x] Implement episode extraction and metadata parsing
+- [x] Handle various RSS feed formats
+- [x] Add unit tests with sample RSS feeds
 
 ### 5.2 Transcriber Service
-- [ ] Implement `services/transcriber.py`
-- [ ] Implement media file download (audio/video)
-- [ ] Integrate MLX-Whisper for transcription
-- [ ] Implement language detection
-- [ ] Implement paragraph boundary detection
-- [ ] Implement media cleanup logic
-- [ ] Add unit tests (mock Whisper for fast tests)
+- [x] Implement `services/transcriber.py`
+- [x] Implement media file download (audio/video)
+- [x] Integrate MLX-Whisper for transcription
+- [x] Implement language detection
+- [x] Implement paragraph boundary detection
+- [x] Implement media cleanup logic
+- [x] Add unit tests (mock Whisper for fast tests)
 
 ### 5.3 Analyzer Service
-- [ ] Implement `services/analyzer.py`
-- [ ] Implement summary generation
-- [ ] Implement topic extraction
-- [ ] Implement keyword extraction
-- [ ] Implement advertising detection
-- [ ] Implement ad segment removal with marker replacement
-- [ ] Add unit tests with sample transcripts
+- [x] Implement `services/analyzer.py`
+- [x] Implement summary generation
+- [x] Implement topic extraction
+- [x] Implement keyword extraction
+- [x] Implement advertising detection
+- [x] Implement ad segment removal with marker replacement
+- [x] Add unit tests with sample transcripts
 
 ---
 
 ## Phase 6: Output Generation
 
 ### 6.1 Markdown Writer
-- [ ] Implement `output/markdown.py`
-- [ ] Implement YAML frontmatter generation
-- [ ] Implement transcript formatting with paragraphs
-- [ ] Implement file path generation (`<podcast>/<episode>.md`)
-- [ ] Implement directory creation
-- [ ] Sanitize filenames (remove invalid characters)
-- [ ] Add unit tests for output formatting
+- [x] Implement `output/markdown.py`
+- [x] Implement YAML frontmatter generation
+- [x] Implement transcript formatting with paragraphs
+- [x] Implement file path generation (`<podcast>/<episode>.md`)
+- [x] Implement directory creation
+- [x] Sanitize filenames (remove invalid characters)
+- [x] Add unit tests for output formatting
 
 ---
 
 ## Phase 7: CLI Implementation
 
 ### 7.1 CLI Framework
-- [ ] Implement `cli/main.py` with click command group
-- [ ] Implement `__main__.py` entry point
-- [ ] Configure CLI to load config on startup
+- [x] Implement `cli/main.py` with click command group
+- [x] Implement `__main__.py` entry point
+- [x] Configure CLI to load config on startup
 
 ### 7.2 Search Command
-- [ ] Implement `cli/search.py`
-- [ ] Add `-n/--limit` parameter
-- [ ] Format and display search results
-- [ ] Add integration tests
+- [x] Implement `cli/search.py`
+- [x] Add `-n/--limit` parameter
+- [x] Format and display search results
+- [x] Add integration tests
 
 ### 7.3 Episodes Command
-- [ ] Implement `cli/episodes.py`
-- [ ] Add `-n/--limit` parameter
-- [ ] Display episodes with index numbers
-- [ ] Add integration tests
+- [x] Implement `cli/episodes.py`
+- [x] Add `-n/--limit` parameter
+- [x] Display episodes with index numbers
+- [x] Add integration tests
 
 ### 7.4 Transcribe Command
-- [ ] Implement `cli/transcribe.py`
-- [ ] Add `--skip-language-check` flag
-- [ ] Orchestrate download → transcribe → analyze → write flow
-- [ ] Display progress feedback
-- [ ] Add integration tests
+- [x] Implement `cli/transcribe.py`
+- [x] Add `--skip-language-check` flag
+- [x] Orchestrate download → transcribe → analyze → write flow
+- [x] Display progress feedback
+- [x] Add integration tests
 
 ---
 
 ## Phase 8: Testing & Polish
 
 ### 8.1 Unit Test Coverage
-- [ ] Ensure all modules have unit tests
-- [ ] Achieve target coverage (aim for 80%+)
-- [ ] Add edge case tests
+- [x] Ensure all modules have unit tests
+- [x] Achieve target coverage (aim for 80%+)
+- [x] Add edge case tests
 
 ### 8.2 Integration Tests
-- [ ] Test full search → episodes → transcribe workflow
-- [ ] Test with real podcast feeds (selected stable feeds)
-- [ ] Test error scenarios (network failures, invalid URLs)
+- [x] Test full search → episodes → transcribe workflow
+- [x] Test with real podcast feeds (selected stable feeds)
+- [x] Test error scenarios (network failures, invalid URLs)
 
 ### 8.3 Documentation
 - [ ] Write README.md with usage instructions
@@ -159,10 +159,10 @@ This document tracks implementation progress. Mark tasks with:
 ## Phase 9: Packaging & Distribution
 
 ### 9.1 Package Configuration
-- [ ] Finalize `pyproject.toml` metadata
-- [ ] Configure entry point for `podtext` command
-- [ ] Test installation via pip/uv
-- [ ] Verify virtual environment setup works
+- [x] Finalize `pyproject.toml` metadata
+- [x] Configure entry point for `podtext` command
+- [x] Test installation via pip/uv
+- [x] Verify virtual environment setup works
 
 ---
 
