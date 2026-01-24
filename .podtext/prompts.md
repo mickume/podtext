@@ -13,9 +13,9 @@ Only mark sections as advertisements if you are highly confident. These include:
 - Service endorsements with special offers
 
 Return the results as JSON in this format:
-{"advertisements": [{"start": 0, "end": 100, "confidence": "high"}]}
+{{"advertisements": [{{"start": 0, "end": 100, "confidence": "high"}}]}}
 
-If no advertisements are found, return: {"advertisements": []}
+If no advertisements are found, return: {{"advertisements": []}}
 
 Transcript:
 {text}
