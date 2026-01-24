@@ -150,9 +150,9 @@ This document tracks implementation progress. Mark tasks with:
 - [x] Test error scenarios (network failures, invalid URLs)
 
 ### 8.3 Documentation
-- [ ] Write README.md with usage instructions
-- [ ] Document configuration options
-- [ ] Add example workflows
+- [x] Write README.md with usage instructions
+- [x] Document configuration options
+- [x] Add example workflows
 
 ---
 
