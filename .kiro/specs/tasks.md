@@ -87,20 +87,20 @@ Implementation follows the pipeline architecture: project setup → core modules
     - **Property 13: Prompt Runtime Loading**
     - **Validates: Requirements 9.2**
 
-- [ ] 6. Output Generation
-  - [ ] 6.1 Implement Advertisement Removal
+- [x] 6. Output Generation
+  - [x] 6.1 Implement Advertisement Removal
     - Create processor.py with remove_advertisements function
     - Remove identified ad blocks from text
     - Insert "ADVERTISEMENT WAS REMOVED" markers
     - _Requirements: 6.2, 6.3_
-  
-  - [ ] 6.2 Implement Markdown Generator
+
+  - [x] 6.2 Implement Markdown Generator
     - Create output.py with generate_markdown function
     - Create frontmatter with episode metadata and analysis results
     - Include transcribed text with paragraph formatting
     - _Requirements: 4.4, 4.5, 7.2, 7.3, 7.4, 7.5, 7.6_
-  
-  - [ ] 6.3 Write property tests for Output Generation
+
+  - [x] 6.3 Write property tests for Output Generation
     - **Property 8: Markdown Output Completeness**
     - **Property 10: Advertisement Removal with Markers**
     - **Validates: Requirements 4.4, 4.5, 6.2, 6.3, 7.6**
