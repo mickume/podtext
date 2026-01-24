@@ -6,21 +6,21 @@ Implementation follows the pipeline architecture: project setup → core modules
 
 ## Tasks
 
-- [ ] 1. Project Setup and Configuration
-  - [ ] 1.1 Initialize Python 3.13 project with pyproject.toml
+- [x] 1. Project Setup and Configuration
+  - [x] 1.1 Initialize Python 3.13 project with pyproject.toml
     - Create project structure with src/podtext layout
     - Configure pip/uv installation
     - Add dependencies: httpx, feedparser, mlx-whisper, anthropic, click, tomli
     - _Requirements: 10.1, 10.2_
   
-  - [ ] 1.2 Implement Config Manager
+  - [x] 1.2 Implement Config Manager
     - Create config.py with TOML loading from local/global paths
     - Implement config priority (local > global)
     - Auto-create global config with defaults if missing
     - Handle ANTHROPIC_API_KEY env var precedence
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
   
-  - [ ] 1.3 Write property tests for Config Manager
+  - [x] 1.3 Write property tests for Config Manager
     - **Property 11: Config Loading Priority**
     - **Property 12: Environment Variable Precedence**
     - **Validates: Requirements 8.1, 8.2, 8.5**
