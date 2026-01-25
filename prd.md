@@ -3,7 +3,6 @@
 A command-line tool that downloads podcast episodes from RSS feeds and transcribes them using Whisper, optimized for Apple Silicon. Use Claude AI and its API for further processing and analysis of the transcribed podcast episode.
 
 ## Requirements
-
 How podtext works:
 
 1) discover podcast feed
@@ -42,24 +41,4 @@ Requirements
 ## Implementation planning
 - Create a requirements document from this PRD. Use the EARS (Easy Approach to Requirements Syntax) pattern for the requirements document. Then create design document but don't go to overboard with details in the design document. After that create a detailled tasks document that allows to track the progress of the implementation.
 
-## Clarification
-
-On Claude API key handling:
-- read from environment variable (e.g., `ANTHROPIC_API_KEY`). Look for one in the TOML (default) if not defined in the environment
-
-On Media file storage
-- A configurable directory in the TOML config
-- A default location like `.podtext/downloads/`, if nothing is defined
-- Temporary storage that gets cleaned up after transcription. This can be controlled in the TOML file
-
-On Output location
-- Same as above - configurable vs default location.
-
-On Whisper model selection
-- configured in the TOML. Default='base'
-
-On Error handling for non-English content
-- Warning, but continue
-
-On Advertising removal
-- Remove them entirely from the output and insert a marker e.g. "ADVERTISEMENT WAS REMOVED"
+## Clarifications
