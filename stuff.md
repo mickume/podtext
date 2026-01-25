@@ -14,7 +14,7 @@ now that I've merged all upstream changes, verify that a) all the requirements a
 
 ---
 
-Read the issues in the repo, that are open and have the label "enhancement". For each found, create a simple requirements, design and task document on how to implement the issue reported. For the implementation create a local feature branch in git during the time of the implementation. Once you are done with the implementation, create a pull request. linked to the issue for manual review.
+Read the issues in the repo, that are open and have the label "enhancement". For each found, create a simple requirements, design and task document on how to implement the issue. Before you start implementing anything, create a local feature branch in git. Once you are done with the implementation, create a pull request and link it to the issue for manual review.
 
 
 Add all new files to git and commit them with a meaningfull but not to overly verbose commit message. Do not push the commit.
