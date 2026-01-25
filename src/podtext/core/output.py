@@ -97,36 +97,27 @@ def _format_content(
         
     Validates: Requirements 4.4, 7.5
     """
-    # Process advertisement removal (Requirement 7.5)
-    processed_text = remove_advertisements(transcription.text, ad_markers)
-    
     # If we have paragraphs from transcription, use them for formatting
-    # Otherwise, use the processed text as-is
     if transcription.paragraphs:
-        # Reconstruct text with paragraph breaks
-        # Note: We need to apply ad removal to the full text first,
-        # then format with paragraph breaks
-        
-        # For paragraph formatting, we join paragraphs with double newlines
-        # But we need to handle the case where ad markers were inserted
-        
-        # If ad markers were applied, the text structure has changed
-        # In this case, we use the processed text and add paragraph breaks
-        # based on sentence endings
+        # Process advertisement removal on each paragraph if needed
         if ad_markers:
-            # Use processed text with simple paragraph formatting
+            # For ad markers, we need to work with the full text
+            processed_text = remove_advertisements(transcription.text, ad_markers)
             return _add_paragraph_breaks(processed_text)
         else:
-            # Use original paragraphs with double newlines
+            # Use original paragraphs with double newlines for readability
             return "\n\n".join(transcription.paragraphs)
     
-    return processed_text
+    # No paragraphs available, process the raw text
+    processed_text = remove_advertisements(transcription.text, ad_markers)
+    return _add_paragraph_breaks(processed_text)
 
 
 def _add_paragraph_breaks(text: str) -> str:
     """Add paragraph breaks to text based on sentence patterns.
     
     Adds double newlines after groups of sentences to improve readability.
+    Groups approximately 3-5 sentences per paragraph.
     
     Args:
         text: The text to format.
@@ -137,17 +128,43 @@ def _add_paragraph_breaks(text: str) -> str:
     if not text:
         return text
     
-    # Split on existing newlines first
-    lines = text.split("\n")
-    
-    # Join with double newlines for paragraph separation
-    # Filter out empty lines to avoid excessive spacing
-    non_empty_lines = [line.strip() for line in lines if line.strip()]
-    
-    if not non_empty_lines:
+    # If text has single newlines, convert them to paragraph breaks
+    if "\n" in text:
+        lines = text.split("\n")
+        non_empty_lines = [line.strip() for line in lines if line.strip()]
+        if non_empty_lines:
+            return "\n\n".join(non_empty_lines)
         return text
     
-    return "\n\n".join(non_empty_lines)
+    # No newlines - split text into sentences and group them into paragraphs
+    import re
+    
+    # Split on sentence-ending punctuation followed by space
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    
+    if len(sentences) <= 1:
+        return text
+    
+    paragraphs = []
+    current_paragraph = []
+    
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        
+        current_paragraph.append(sentence)
+        
+        # Create paragraph breaks every 4-5 sentences
+        if len(current_paragraph) >= 4:
+            paragraphs.append(" ".join(current_paragraph))
+            current_paragraph = []
+    
+    # Add remaining sentences as final paragraph
+    if current_paragraph:
+        paragraphs.append(" ".join(current_paragraph))
+    
+    return "\n\n".join(paragraphs)
 
 
 def generate_markdown(
