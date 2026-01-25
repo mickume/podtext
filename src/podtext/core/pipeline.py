@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 from podtext.core.config import Config, load_config
 from podtext.core.output import generate_markdown
+from podtext.core.processor import sanitize_path_component
 from podtext.services.claude import (
     AnalysisResult,
     ClaudeAPIError,
@@ -82,29 +83,43 @@ class PipelineResult:
     language_detected: str = "unknown"
 
 
-def _generate_output_filename(episode: EpisodeInfo) -> str:
-    """Generate a safe filename for the output markdown file.
+def _generate_output_path(
+    episode: EpisodeInfo,
+    podcast_name: str,
+    output_dir: Path,
+) -> Path:
+    """Generate the full output path for a transcribed episode.
+    
+    Creates a path in the format: <output_dir>/<podcast_name>/<episode_title>.md
+    
+    The podcast name and episode title are sanitized to be safe for file systems
+    and limited to 30 characters each.
     
     Args:
-        episode: Episode information.
+        episode: Episode information from RSS feed.
+        podcast_name: Name of the podcast.
+        output_dir: Base output directory from config.
         
     Returns:
-        Safe filename string.
+        Full path for the output markdown file.
+        
+    Validates: Requirements 1.1, 4.1, 4.2, 4.4
     """
-    # Create a safe filename from episode title
-    safe_title = "".join(
-        c if c.isalnum() or c in " -_" else "_"
-        for c in episode.title
+    # Sanitize podcast name, use fallback if empty
+    safe_podcast = sanitize_path_component(
+        podcast_name,
+        max_length=30,
+        fallback="unknown-podcast",
     )
-    # Truncate if too long
-    safe_title = safe_title[:100].strip()
-    if not safe_title:
-        safe_title = f"episode_{episode.index}"
     
-    # Add date prefix for sorting
-    date_prefix = episode.pub_date.strftime("%Y-%m-%d")
+    # Sanitize episode title, use fallback with index if empty
+    safe_title = sanitize_path_component(
+        episode.title,
+        max_length=30,
+        fallback=f"episode_{episode.index}",
+    )
     
-    return f"{date_prefix}_{safe_title}.md"
+    return output_dir / safe_podcast / f"{safe_title}.md"
 
 
 def _display_warning(message: str) -> None:
@@ -248,8 +263,11 @@ def run_pipeline(
             
             # Stage 4: Generate markdown output
             if output_path is None:
-                output_filename = _generate_output_filename(episode)
-                output_path = config.get_output_dir() / output_filename
+                output_path = _generate_output_path(
+                    episode=episode,
+                    podcast_name=podcast_name,
+                    output_dir=config.get_output_dir(),
+                )
             
             generate_markdown(
                 episode=episode,
