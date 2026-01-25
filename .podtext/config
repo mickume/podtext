@@ -1,0 +1,18 @@
+# Podtext Configuration File
+
+[api]
+# Anthropic API key for Claude integration
+# Environment variable ANTHROPIC_API_KEY takes precedence
+anthropic_key = ""
+
+[storage]
+# Directory for downloaded media files
+media_dir = ".podtext/downloads/"
+# Directory for output transcripts
+output_dir = ".podtext/output/"
+# Delete media files after transcription completes
+temp_storage = false
+
+[whisper]
+# Whisper model to use: tiny, base, small, medium, large
+model = "base"
