@@ -12,31 +12,27 @@ from __future__ import annotations
 import tempfile
 import uuid
 from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
-from hypothesis import given, settings, assume
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from podtext.core.config import (
+    VALID_WHISPER_MODELS,
     Config,
     StorageConfig,
-    WhisperConfig,
-    VALID_WHISPER_MODELS,
 )
 from podtext.services.downloader import (
+    cleanup_media_file,
     download_media,
     download_media_to_config_dir,
     download_with_optional_cleanup,
-    cleanup_media_file,
 )
 from podtext.services.transcriber import (
+    TranscriptionResult,
     transcribe,
     transcribe_with_config,
-    TranscriptionResult,
-    VALID_MODELS,
 )
-
 
 # =============================================================================
 # Strategies for generating test data
@@ -56,6 +52,7 @@ filename_strategy = st.from_regex(
     r"[a-zA-Z][a-zA-Z0-9_-]{0,15}\.(mp3|m4a|wav|ogg|mp4)",
     fullmatch=True,
 )
+
 
 # Strategy for generating nested directory paths
 @st.composite
@@ -77,21 +74,24 @@ def media_url_strategy(draw: st.DrawFn) -> str:
 
 
 # Strategy for language codes
-language_code_strategy = st.sampled_from(["en", "es", "fr", "de", "ja", "zh", "ko", "pt", "it", "ru"])
+language_code_strategy = st.sampled_from(
+    ["en", "es", "fr", "de", "ja", "zh", "ko", "pt", "it", "ru"]
+)
 
 
 # =============================================================================
 # Property 5: Media Storage Location
 # =============================================================================
 
+
 class TestMediaStorageLocation:
     """Property 5: Media Storage Location
-    
+
     Feature: podtext, Property 5: Media Storage Location
-    
+
     For any configuration with media_dir set to path P, downloaded media files
     SHALL be stored within path P.
-    
+
     **Validates: Requirements 3.2**
     """
 
@@ -106,28 +106,26 @@ class TestMediaStorageLocation:
         filename: str,
     ) -> None:
         """Property 5: Media Storage Location
-        
+
         Feature: podtext, Property 5: Media Storage Location
-        
+
         For any configuration with media_dir set to path P, downloaded media files
         SHALL be stored within path P.
-        
+
         **Validates: Requirements 3.2**
         """
         # Create a unique temp directory for this test
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         media_dir = base_dir / f"media_{unique_id}" / subdir
-        
+
         try:
             # Create config with the generated media_dir path
-            config = Config(
-                storage=StorageConfig(media_dir=str(media_dir))
-            )
-            
+            config = Config(storage=StorageConfig(media_dir=str(media_dir)))
+
             # Mock the HTTP download to avoid network calls
             test_content = b"fake audio content for testing"
-            
+
             with patch("podtext.services.downloader.httpx.stream") as mock_stream:
                 mock_response = MagicMock()
                 mock_response.iter_bytes.return_value = [test_content]
@@ -135,31 +133,29 @@ class TestMediaStorageLocation:
                 mock_response.__enter__ = MagicMock(return_value=mock_response)
                 mock_response.__exit__ = MagicMock(return_value=False)
                 mock_stream.return_value = mock_response
-                
+
                 # Download media to config directory
                 result_path = download_media_to_config_dir(
                     f"https://example.com/podcast/{filename}",
                     config,
                     filename=filename,
                 )
-                
+
                 # Property: Downloaded file SHALL be stored within path P (media_dir)
-                assert result_path.exists(), (
-                    f"Downloaded file should exist at {result_path}"
-                )
-                
+                assert result_path.exists(), f"Downloaded file should exist at {result_path}"
+
                 # Verify the file is within the configured media_dir
                 assert str(result_path).startswith(str(media_dir)), (
                     f"Downloaded file '{result_path}' should be within "
                     f"configured media_dir '{media_dir}'"
                 )
-                
+
                 # Verify the file is a direct child of media_dir
                 assert result_path.parent == media_dir, (
                     f"Downloaded file parent '{result_path.parent}' should be "
                     f"exactly the configured media_dir '{media_dir}'"
                 )
-                
+
                 # Verify the content was written correctly
                 assert result_path.read_bytes() == test_content, (
                     "Downloaded file content should match expected content"
@@ -167,6 +163,7 @@ class TestMediaStorageLocation:
         finally:
             # Cleanup
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
     @settings(max_examples=100)
@@ -180,21 +177,21 @@ class TestMediaStorageLocation:
         filename: str,
     ) -> None:
         """Property 5: Media Storage Location - Direct download_media
-        
+
         Feature: podtext, Property 5: Media Storage Location
-        
+
         For any destination path P provided to download_media, the downloaded
         file SHALL be stored at exactly path P.
-        
+
         **Validates: Requirements 3.2**
         """
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         dest_path = base_dir / f"{media_dir_name}_{unique_id}" / filename
-        
+
         try:
             test_content = b"test audio data"
-            
+
             with patch("podtext.services.downloader.httpx.stream") as mock_stream:
                 mock_response = MagicMock()
                 mock_response.iter_bytes.return_value = [test_content]
@@ -202,22 +199,20 @@ class TestMediaStorageLocation:
                 mock_response.__enter__ = MagicMock(return_value=mock_response)
                 mock_response.__exit__ = MagicMock(return_value=False)
                 mock_stream.return_value = mock_response
-                
+
                 result_path = download_media(
                     f"https://example.com/{filename}",
                     dest_path,
                 )
-                
+
                 # Property: Downloaded file SHALL be stored at exactly the specified path
                 assert result_path == dest_path, (
-                    f"Returned path '{result_path}' should equal "
-                    f"destination path '{dest_path}'"
+                    f"Returned path '{result_path}' should equal destination path '{dest_path}'"
                 )
-                assert dest_path.exists(), (
-                    f"File should exist at destination path '{dest_path}'"
-                )
+                assert dest_path.exists(), f"File should exist at destination path '{dest_path}'"
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
 
@@ -225,14 +220,15 @@ class TestMediaStorageLocation:
 # Property 6: Temporary File Cleanup
 # =============================================================================
 
+
 class TestTemporaryFileCleanup:
     """Property 6: Temporary File Cleanup
-    
+
     Feature: podtext, Property 6: Temporary File Cleanup
-    
+
     For any transcription operation with temp_storage=true, after completion
     the media file SHALL not exist on disk.
-    
+
     **Validates: Requirements 3.3**
     """
 
@@ -247,18 +243,18 @@ class TestTemporaryFileCleanup:
         subdir: str,
     ) -> None:
         """Property 6: Temporary File Cleanup
-        
+
         Feature: podtext, Property 6: Temporary File Cleanup
-        
+
         For any transcription operation with temp_storage=true, after completion
         the media file SHALL not exist on disk.
-        
+
         **Validates: Requirements 3.3**
         """
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         media_dir = base_dir / f"media_{unique_id}" / subdir
-        
+
         try:
             # Create config with temp_storage=True
             config = Config(
@@ -267,9 +263,9 @@ class TestTemporaryFileCleanup:
                     temp_storage=True,  # Key: temp_storage is enabled
                 )
             )
-            
+
             test_content = b"temporary audio content"
-            
+
             with patch("podtext.services.downloader.httpx.stream") as mock_stream:
                 mock_response = MagicMock()
                 mock_response.iter_bytes.return_value = [test_content]
@@ -277,7 +273,7 @@ class TestTemporaryFileCleanup:
                 mock_response.__enter__ = MagicMock(return_value=mock_response)
                 mock_response.__exit__ = MagicMock(return_value=False)
                 mock_stream.return_value = mock_response
-                
+
                 # Use the context manager that respects temp_storage config
                 file_path_during_context = None
                 with download_with_optional_cleanup(
@@ -287,10 +283,8 @@ class TestTemporaryFileCleanup:
                 ) as file_path:
                     file_path_during_context = file_path
                     # File should exist during the context
-                    assert file_path.exists(), (
-                        f"File should exist during context at '{file_path}'"
-                    )
-                
+                    assert file_path.exists(), f"File should exist during context at '{file_path}'"
+
                 # Property: After completion, media file SHALL not exist on disk
                 assert not file_path_during_context.exists(), (
                     f"With temp_storage=True, file '{file_path_during_context}' "
@@ -298,6 +292,7 @@ class TestTemporaryFileCleanup:
                 )
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
     @settings(max_examples=100)
@@ -311,18 +306,18 @@ class TestTemporaryFileCleanup:
         subdir: str,
     ) -> None:
         """Property 6: Temporary File Cleanup - Inverse
-        
+
         Feature: podtext, Property 6: Temporary File Cleanup
-        
+
         For any transcription operation with temp_storage=false, after completion
         the media file SHALL still exist on disk.
-        
+
         **Validates: Requirements 3.2, 3.3**
         """
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         media_dir = base_dir / f"media_{unique_id}" / subdir
-        
+
         try:
             # Create config with temp_storage=False
             config = Config(
@@ -331,9 +326,9 @@ class TestTemporaryFileCleanup:
                     temp_storage=False,  # Key: temp_storage is disabled
                 )
             )
-            
+
             test_content = b"persistent audio content"
-            
+
             with patch("podtext.services.downloader.httpx.stream") as mock_stream:
                 mock_response = MagicMock()
                 mock_response.iter_bytes.return_value = [test_content]
@@ -341,7 +336,7 @@ class TestTemporaryFileCleanup:
                 mock_response.__enter__ = MagicMock(return_value=mock_response)
                 mock_response.__exit__ = MagicMock(return_value=False)
                 mock_stream.return_value = mock_response
-                
+
                 file_path_during_context = None
                 with download_with_optional_cleanup(
                     f"https://example.com/{filename}",
@@ -349,10 +344,8 @@ class TestTemporaryFileCleanup:
                     filename=filename,
                 ) as file_path:
                     file_path_during_context = file_path
-                    assert file_path.exists(), (
-                        f"File should exist during context at '{file_path}'"
-                    )
-                
+                    assert file_path.exists(), f"File should exist during context at '{file_path}'"
+
                 # With temp_storage=False, file should still exist after context
                 assert file_path_during_context.exists(), (
                     f"With temp_storage=False, file '{file_path_during_context}' "
@@ -360,6 +353,7 @@ class TestTemporaryFileCleanup:
                 )
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
     @settings(max_examples=100)
@@ -371,27 +365,27 @@ class TestTemporaryFileCleanup:
         filename: str,
     ) -> None:
         """Property 6: Temporary File Cleanup - cleanup_media_file function
-        
+
         Feature: podtext, Property 6: Temporary File Cleanup
-        
+
         The cleanup_media_file function SHALL remove the specified file from disk.
-        
+
         **Validates: Requirements 3.3**
         """
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         file_path = base_dir / f"test_{unique_id}" / filename
-        
+
         try:
             # Create the file
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_bytes(b"content to be deleted")
-            
+
             assert file_path.exists(), "File should exist before cleanup"
-            
+
             # Call cleanup
             result = cleanup_media_file(file_path)
-            
+
             # Property: After cleanup, file SHALL not exist
             assert result is True, "cleanup_media_file should return True for existing file"
             assert not file_path.exists(), (
@@ -399,6 +393,7 @@ class TestTemporaryFileCleanup:
             )
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
 
@@ -406,14 +401,15 @@ class TestTemporaryFileCleanup:
 # Property 7: Config Model Propagation
 # =============================================================================
 
+
 class TestConfigModelPropagation:
     """Property 7: Config Model Propagation
-    
+
     Feature: podtext, Property 7: Config Model Propagation
-    
+
     For any configuration with whisper.model set to M, the transcription function
     SHALL be called with model parameter M.
-    
+
     **Validates: Requirements 4.2**
     """
 
@@ -426,22 +422,22 @@ class TestConfigModelPropagation:
         model: str,
     ) -> None:
         """Property 7: Config Model Propagation
-        
+
         Feature: podtext, Property 7: Config Model Propagation
-        
+
         For any configuration with whisper.model set to M, the transcription function
         SHALL be called with model parameter M.
-        
+
         **Validates: Requirements 4.2**
         """
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         audio_file = base_dir / f"test_{unique_id}.mp3"
-        
+
         try:
             # Create a fake audio file
             audio_file.write_bytes(b"fake audio content")
-            
+
             with patch("podtext.services.transcriber.MLX_WHISPER_AVAILABLE", True):
                 with patch("podtext.services.transcriber.mlx_whisper") as mock_mlx:
                     mock_mlx.transcribe.return_value = {
@@ -449,14 +445,14 @@ class TestConfigModelPropagation:
                         "segments": [{"text": "Test transcription."}],
                         "language": "en",
                     }
-                    
+
                     # Call transcribe with the specified model
-                    result = transcribe(audio_file, model=model)
-                    
+                    transcribe(audio_file, model=model)
+
                     # Property: transcription function SHALL be called with model parameter M
                     mock_mlx.transcribe.assert_called_once()
                     call_args = mock_mlx.transcribe.call_args
-                    
+
                     # Verify the model path contains the specified model
                     path_or_hf_repo = call_args.kwargs.get("path_or_hf_repo", "")
                     assert f"whisper-{model}" in path_or_hf_repo, (
@@ -465,6 +461,7 @@ class TestConfigModelPropagation:
                     )
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
     @settings(max_examples=100)
@@ -476,35 +473,35 @@ class TestConfigModelPropagation:
         model: str,
     ) -> None:
         """Property 7: Config Model Propagation - transcribe_with_config
-        
+
         Feature: podtext, Property 7: Config Model Propagation
-        
+
         For any model M passed to transcribe_with_config, the underlying
         transcribe function SHALL be called with model parameter M.
-        
+
         **Validates: Requirements 4.2**
         """
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         audio_file = base_dir / f"test_{unique_id}.mp3"
-        
+
         try:
             audio_file.write_bytes(b"fake audio content")
-            
+
             with patch("podtext.services.transcriber.transcribe") as mock_transcribe:
                 mock_transcribe.return_value = TranscriptionResult(
                     text="Test",
                     paragraphs=["Test."],
                     language="en",
                 )
-                
+
                 # Call transcribe_with_config with the specified model
                 transcribe_with_config(audio_file, model=model)
-                
+
                 # Property: transcribe SHALL be called with model parameter M
                 mock_transcribe.assert_called_once()
                 call_args = mock_transcribe.call_args
-                
+
                 # The model should be passed as the second positional argument
                 assert call_args[0][1] == model, (
                     f"transcribe should be called with model '{model}', "
@@ -512,6 +509,7 @@ class TestConfigModelPropagation:
                 )
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
     @settings(max_examples=100)
@@ -525,24 +523,24 @@ class TestConfigModelPropagation:
         model2: str,
     ) -> None:
         """Property 7: Config Model Propagation - Model Distinction
-        
+
         Feature: podtext, Property 7: Config Model Propagation
-        
+
         For any two different models M1 and M2, the transcription function
         SHALL be called with different model parameters.
-        
+
         **Validates: Requirements 4.2**
         """
         # Only test when models are different
         assume(model1 != model2)
-        
+
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         audio_file = base_dir / f"test_{unique_id}.mp3"
-        
+
         try:
             audio_file.write_bytes(b"fake audio content")
-            
+
             with patch("podtext.services.transcriber.MLX_WHISPER_AVAILABLE", True):
                 with patch("podtext.services.transcriber.mlx_whisper") as mock_mlx:
                     mock_mlx.transcribe.return_value = {
@@ -550,17 +548,17 @@ class TestConfigModelPropagation:
                         "segments": [],
                         "language": "en",
                     }
-                    
+
                     # Call with first model
                     transcribe(audio_file, model=model1)
                     call1_path = mock_mlx.transcribe.call_args.kwargs.get("path_or_hf_repo", "")
-                    
+
                     mock_mlx.reset_mock()
-                    
+
                     # Call with second model
                     transcribe(audio_file, model=model2)
                     call2_path = mock_mlx.transcribe.call_args.kwargs.get("path_or_hf_repo", "")
-                    
+
                     # Property: Different models SHALL produce different path_or_hf_repo values
                     assert call1_path != call2_path, (
                         f"Different models '{model1}' and '{model2}' should produce "
@@ -574,6 +572,7 @@ class TestConfigModelPropagation:
                     )
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
 
@@ -581,14 +580,15 @@ class TestConfigModelPropagation:
 # Property 9: Language Check Bypass
 # =============================================================================
 
+
 class TestLanguageCheckBypass:
     """Property 9: Language Check Bypass
-    
+
     Feature: podtext, Property 9: Language Check Bypass
-    
+
     For any transcription operation with skip-language-check flag set,
     the language detection function SHALL not be called.
-    
+
     **Validates: Requirements 5.3**
     """
 
@@ -601,21 +601,21 @@ class TestLanguageCheckBypass:
         detected_language: str,
     ) -> None:
         """Property 9: Language Check Bypass
-        
+
         Feature: podtext, Property 9: Language Check Bypass
-        
+
         For any transcription operation with skip-language-check flag set,
         the language detection function SHALL not be called.
-        
+
         **Validates: Requirements 5.3**
         """
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         audio_file = base_dir / f"test_{unique_id}.mp3"
-        
+
         try:
             audio_file.write_bytes(b"fake audio content")
-            
+
             with patch("podtext.services.transcriber.MLX_WHISPER_AVAILABLE", True):
                 with patch("podtext.services.transcriber.mlx_whisper") as mock_mlx:
                     with patch("podtext.services.transcriber._detect_language") as mock_detect:
@@ -625,19 +625,19 @@ class TestLanguageCheckBypass:
                                 "segments": [{"text": "Test."}],
                                 "language": detected_language,
                             }
-                            
+
                             # Call transcribe with skip_language_check=True
                             result = transcribe(
                                 audio_file,
                                 skip_language_check=True,
                             )
-                            
+
                             # Property: language detection function SHALL not be called
                             mock_detect.assert_not_called()
-                            
+
                             # Also verify warning is not called
                             mock_warn.assert_not_called()
-                            
+
                             # Language should be set to "unknown" when skipped
                             assert result.language == "unknown", (
                                 f"When skip_language_check=True, language should be 'unknown', "
@@ -645,6 +645,7 @@ class TestLanguageCheckBypass:
                             )
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
     @settings(max_examples=100)
@@ -656,21 +657,21 @@ class TestLanguageCheckBypass:
         detected_language: str,
     ) -> None:
         """Property 9: Language Check Bypass - Inverse
-        
+
         Feature: podtext, Property 9: Language Check Bypass
-        
+
         For any transcription operation WITHOUT skip-language-check flag,
         the language detection SHALL be performed.
-        
+
         **Validates: Requirements 5.1, 5.3**
         """
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         audio_file = base_dir / f"test_{unique_id}.mp3"
-        
+
         try:
             audio_file.write_bytes(b"fake audio content")
-            
+
             with patch("podtext.services.transcriber.MLX_WHISPER_AVAILABLE", True):
                 with patch("podtext.services.transcriber.mlx_whisper") as mock_mlx:
                     mock_mlx.transcribe.return_value = {
@@ -678,47 +679,51 @@ class TestLanguageCheckBypass:
                         "segments": [{"text": "Test."}],
                         "language": detected_language,
                     }
-                    
+
                     # Call transcribe with skip_language_check=False (default)
                     result = transcribe(
                         audio_file,
                         skip_language_check=False,
                     )
-                    
+
                     # Language detection should be performed
                     # The result should contain the detected language
                     assert result.language == detected_language, (
-                        f"When skip_language_check=False, language should be '{detected_language}', "
+                        f"When skip_language_check=False, "
+                        f"language should be '{detected_language}', "
                         f"but got '{result.language}'"
                     )
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
     @settings(max_examples=100)
     @given(
-        non_english_language=st.sampled_from(["es", "fr", "de", "ja", "zh", "ko", "pt", "it", "ru"]),
+        non_english_language=st.sampled_from(
+            ["es", "fr", "de", "ja", "zh", "ko", "pt", "it", "ru"]
+        ),
     )
     def test_no_warning_when_skip_flag_set_for_non_english(
         self,
         non_english_language: str,
     ) -> None:
         """Property 9: Language Check Bypass - No Warning
-        
+
         Feature: podtext, Property 9: Language Check Bypass
-        
+
         For any transcription operation with skip-language-check flag set,
         no language warning SHALL be displayed even for non-English content.
-        
+
         **Validates: Requirements 5.3**
         """
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         audio_file = base_dir / f"test_{unique_id}.mp3"
-        
+
         try:
             audio_file.write_bytes(b"fake audio content")
-            
+
             with patch("podtext.services.transcriber.MLX_WHISPER_AVAILABLE", True):
                 with patch("podtext.services.transcriber.mlx_whisper") as mock_mlx:
                     with patch("podtext.services.transcriber._warn_non_english") as mock_warn:
@@ -727,20 +732,21 @@ class TestLanguageCheckBypass:
                             "segments": [{"text": "Contenido."}],
                             "language": non_english_language,
                         }
-                        
+
                         # Call transcribe with skip_language_check=True
                         result = transcribe(
                             audio_file,
                             skip_language_check=True,
                         )
-                        
+
                         # Property: No warning SHALL be displayed
                         mock_warn.assert_not_called()
-                        
+
                         # Language should be "unknown" when skipped
                         assert result.language == "unknown"
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)
 
     @settings(max_examples=100)
@@ -752,21 +758,21 @@ class TestLanguageCheckBypass:
         model: str,
     ) -> None:
         """Property 9: Language Check Bypass - Model Independence
-        
+
         Feature: podtext, Property 9: Language Check Bypass
-        
+
         For any transcription operation with skip-language-check flag set,
         the language detection SHALL be bypassed regardless of the model used.
-        
+
         **Validates: Requirements 4.2, 5.3**
         """
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
         audio_file = base_dir / f"test_{unique_id}.mp3"
-        
+
         try:
             audio_file.write_bytes(b"fake audio content")
-            
+
             with patch("podtext.services.transcriber.MLX_WHISPER_AVAILABLE", True):
                 with patch("podtext.services.transcriber.mlx_whisper") as mock_mlx:
                     with patch("podtext.services.transcriber._detect_language") as mock_detect:
@@ -775,26 +781,27 @@ class TestLanguageCheckBypass:
                             "segments": [],
                             "language": "fr",
                         }
-                        
+
                         # Call transcribe with skip_language_check=True and specified model
                         result = transcribe(
                             audio_file,
                             model=model,
                             skip_language_check=True,
                         )
-                        
+
                         # Property: language detection SHALL not be called regardless of model
                         mock_detect.assert_not_called()
-                        
+
                         # Verify the correct model was still used
                         call_args = mock_mlx.transcribe.call_args
                         path_or_hf_repo = call_args.kwargs.get("path_or_hf_repo", "")
                         assert f"whisper-{model}" in path_or_hf_repo, (
                             f"Model '{model}' should still be used with skip_language_check"
                         )
-                        
+
                         # Language should be "unknown"
                         assert result.language == "unknown"
         finally:
             import shutil
+
             shutil.rmtree(base_dir, ignore_errors=True)

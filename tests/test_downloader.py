@@ -8,7 +8,7 @@ Requirements: 3.1, 3.2, 3.3, 3.4
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -73,16 +73,14 @@ class TestExtractFilenameFromUrl:
 
 class TestDownloadMedia:
     """Tests for download_media function.
-    
+
     Validates: Requirements 3.1, 3.4
     """
 
     @patch("podtext.services.downloader.httpx.stream")
-    def test_download_successful(
-        self, mock_stream: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_download_successful(self, mock_stream: MagicMock, tmp_path: Path) -> None:
         """Test successful media download.
-        
+
         Validates: Requirement 3.1
         """
         dest_path = tmp_path / "downloads" / "episode.mp3"
@@ -123,9 +121,7 @@ class TestDownloadMedia:
         assert dest_path.exists()
 
     @patch("podtext.services.downloader.httpx.stream")
-    def test_download_chunked_content(
-        self, mock_stream: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_download_chunked_content(self, mock_stream: MagicMock, tmp_path: Path) -> None:
         """Test downloading content in chunks."""
         dest_path = tmp_path / "episode.mp3"
         chunks = [b"chunk1", b"chunk2", b"chunk3"]
@@ -137,21 +133,21 @@ class TestDownloadMedia:
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_stream.return_value = mock_response
 
-        result = download_media("https://example.com/episode.mp3", dest_path)
+        download_media("https://example.com/episode.mp3", dest_path)
 
         assert dest_path.read_bytes() == b"chunk1chunk2chunk3"
 
 
 class TestDownloadMediaErrorHandling:
     """Tests for error handling in download_media.
-    
+
     Validates: Requirement 3.4
     """
 
     @patch("podtext.services.downloader.httpx.stream")
     def test_timeout_error(self, mock_stream: MagicMock, tmp_path: Path) -> None:
         """Test that timeout raises DownloadError.
-        
+
         Validates: Requirement 3.4
         """
         dest_path = tmp_path / "episode.mp3"
@@ -166,7 +162,7 @@ class TestDownloadMediaErrorHandling:
     @patch("podtext.services.downloader.httpx.stream")
     def test_http_status_error(self, mock_stream: MagicMock, tmp_path: Path) -> None:
         """Test that HTTP error status raises DownloadError.
-        
+
         Validates: Requirement 3.4
         """
         dest_path = tmp_path / "episode.mp3"
@@ -191,7 +187,7 @@ class TestDownloadMediaErrorHandling:
     @patch("podtext.services.downloader.httpx.stream")
     def test_connection_error(self, mock_stream: MagicMock, tmp_path: Path) -> None:
         """Test that connection error raises DownloadError.
-        
+
         Validates: Requirement 3.4
         """
         dest_path = tmp_path / "episode.mp3"
@@ -206,7 +202,7 @@ class TestDownloadMediaErrorHandling:
     @patch("podtext.services.downloader.httpx.stream")
     def test_request_error(self, mock_stream: MagicMock, tmp_path: Path) -> None:
         """Test that generic request error raises DownloadError.
-        
+
         Validates: Requirement 3.4
         """
         dest_path = tmp_path / "episode.mp3"
@@ -239,22 +235,18 @@ class TestDownloadMediaErrorHandling:
 
 class TestDownloadMediaToConfigDir:
     """Tests for download_media_to_config_dir function.
-    
+
     Validates: Requirements 3.1, 3.2
     """
 
     @patch("podtext.services.downloader.download_media")
-    def test_download_to_config_dir(
-        self, mock_download: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_download_to_config_dir(self, mock_download: MagicMock, tmp_path: Path) -> None:
         """Test downloading to configured media directory.
-        
+
         Validates: Requirement 3.2
         """
         media_dir = tmp_path / "media"
-        config = Config(
-            storage=StorageConfig(media_dir=str(media_dir))
-        )
+        config = Config(storage=StorageConfig(media_dir=str(media_dir)))
         expected_path = media_dir / "episode.mp3"
         mock_download.return_value = expected_path
 
@@ -276,9 +268,7 @@ class TestDownloadMediaToConfigDir:
     ) -> None:
         """Test that filename is extracted from URL when not provided."""
         media_dir = tmp_path / "media"
-        config = Config(
-            storage=StorageConfig(media_dir=str(media_dir))
-        )
+        config = Config(storage=StorageConfig(media_dir=str(media_dir)))
         expected_path = media_dir / "podcast_episode.mp3"
         mock_download.return_value = expected_path
 
@@ -293,13 +283,13 @@ class TestDownloadMediaToConfigDir:
 
 class TestCleanupMediaFile:
     """Tests for cleanup_media_file function.
-    
+
     Validates: Requirement 3.3
     """
 
     def test_cleanup_existing_file(self, tmp_path: Path) -> None:
         """Test cleaning up an existing file.
-        
+
         Validates: Requirement 3.3
         """
         file_path = tmp_path / "episode.mp3"
@@ -332,7 +322,7 @@ class TestCleanupMediaFile:
 
 class TestTemporaryDownload:
     """Tests for temporary_download context manager.
-    
+
     Validates: Requirement 3.3
     """
 
@@ -345,7 +335,7 @@ class TestTemporaryDownload:
         tmp_path: Path,
     ) -> None:
         """Test that temporary download cleans up file after use.
-        
+
         Validates: Requirement 3.3
         """
         file_path = tmp_path / "episode.mp3"
@@ -371,7 +361,7 @@ class TestTemporaryDownload:
         config = Config()
 
         with pytest.raises(ValueError):
-            with temporary_download("https://example.com/ep.mp3", config) as path:
+            with temporary_download("https://example.com/ep.mp3", config):
                 raise ValueError("Test error")
 
         mock_cleanup.assert_called_once_with(file_path)
@@ -379,7 +369,7 @@ class TestTemporaryDownload:
 
 class TestDownloadWithOptionalCleanup:
     """Tests for download_with_optional_cleanup context manager.
-    
+
     Validates: Requirements 3.2, 3.3
     """
 
@@ -392,14 +382,12 @@ class TestDownloadWithOptionalCleanup:
         tmp_path: Path,
     ) -> None:
         """Test cleanup when temp_storage is True.
-        
+
         Validates: Requirement 3.3
         """
         file_path = tmp_path / "episode.mp3"
         mock_download.return_value = file_path
-        config = Config(
-            storage=StorageConfig(temp_storage=True)
-        )
+        config = Config(storage=StorageConfig(temp_storage=True))
 
         with download_with_optional_cleanup("https://example.com/ep.mp3", config) as path:
             assert path == file_path
@@ -415,14 +403,12 @@ class TestDownloadWithOptionalCleanup:
         tmp_path: Path,
     ) -> None:
         """Test no cleanup when temp_storage is False.
-        
+
         Validates: Requirement 3.2
         """
         file_path = tmp_path / "episode.mp3"
         mock_download.return_value = file_path
-        config = Config(
-            storage=StorageConfig(temp_storage=False)
-        )
+        config = Config(storage=StorageConfig(temp_storage=False))
 
         with download_with_optional_cleanup("https://example.com/ep.mp3", config) as path:
             assert path == file_path
@@ -440,9 +426,7 @@ class TestDownloadWithOptionalCleanup:
         """Test cleanup happens on exception when temp_storage is True."""
         file_path = tmp_path / "episode.mp3"
         mock_download.return_value = file_path
-        config = Config(
-            storage=StorageConfig(temp_storage=True)
-        )
+        config = Config(storage=StorageConfig(temp_storage=True))
 
         with pytest.raises(ValueError):
             with download_with_optional_cleanup("https://example.com/ep.mp3", config):

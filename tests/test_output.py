@@ -13,15 +13,15 @@ import pytest
 import yaml
 
 from podtext.core.output import (
+    _add_paragraph_breaks,
+    _format_content,
+    _format_frontmatter,
     generate_markdown,
     generate_markdown_string,
-    _format_frontmatter,
-    _format_content,
-    _add_paragraph_breaks,
 )
+from podtext.services.claude import AnalysisResult
 from podtext.services.rss import EpisodeInfo
 from podtext.services.transcriber import TranscriptionResult
-from podtext.services.claude import AnalysisResult
 
 
 @pytest.fixture
@@ -254,9 +254,7 @@ class TestGenerateMarkdownString:
         self, sample_episode, sample_transcription, sample_analysis
     ):
         """Output contains both frontmatter and content."""
-        result = generate_markdown_string(
-            sample_episode, sample_transcription, sample_analysis
-        )
+        result = generate_markdown_string(sample_episode, sample_transcription, sample_analysis)
         # Has frontmatter
         assert result.startswith("---\n")
         assert "title:" in result
@@ -267,9 +265,7 @@ class TestGenerateMarkdownString:
         self, sample_episode, sample_transcription, sample_analysis
     ):
         """Frontmatter appears before content."""
-        result = generate_markdown_string(
-            sample_episode, sample_transcription, sample_analysis
-        )
+        result = generate_markdown_string(sample_episode, sample_transcription, sample_analysis)
         frontmatter_end = result.rfind("---\n") + 4
         content_start = result.find("Hello")
         assert frontmatter_end < content_start
@@ -278,9 +274,7 @@ class TestGenerateMarkdownString:
         self, sample_episode, sample_transcription, sample_analysis
     ):
         """Validates: Requirement 7.6 - All analysis results in frontmatter."""
-        result = generate_markdown_string(
-            sample_episode, sample_transcription, sample_analysis
-        )
+        result = generate_markdown_string(sample_episode, sample_transcription, sample_analysis)
         # Extract and parse frontmatter
         lines = result.split("\n")
         yaml_lines = []
@@ -293,18 +287,16 @@ class TestGenerateMarkdownString:
                 continue
             if in_frontmatter:
                 yaml_lines.append(line)
-        
+
         yaml_content = "\n".join(yaml_lines)
         data = yaml.safe_load(yaml_content)
-        
+
         # All analysis results should be present
         assert "summary" in data
         assert "topics" in data
         assert "keywords" in data
 
-    def test_with_podcast_name(
-        self, sample_episode, sample_transcription, sample_analysis
-    ):
+    def test_with_podcast_name(self, sample_episode, sample_transcription, sample_analysis):
         """Podcast name is included when provided."""
         result = generate_markdown_string(
             sample_episode, sample_transcription, sample_analysis, "Test Podcast"
@@ -316,15 +308,11 @@ class TestGenerateMarkdownString:
 class TestGenerateMarkdown:
     """Tests for generate_markdown function."""
 
-    def test_creates_file(
-        self, sample_episode, sample_transcription, sample_analysis
-    ):
+    def test_creates_file(self, sample_episode, sample_transcription, sample_analysis):
         """Validates: Requirement 4.4 - Generates markdown file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "output.md"
-            generate_markdown(
-                sample_episode, sample_transcription, sample_analysis, output_path
-            )
+            generate_markdown(sample_episode, sample_transcription, sample_analysis, output_path)
             assert output_path.exists()
 
     def test_file_content_matches_string(
@@ -333,15 +321,13 @@ class TestGenerateMarkdown:
         """File content matches string generation."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "output.md"
-            generate_markdown(
-                sample_episode, sample_transcription, sample_analysis, output_path
-            )
-            
+            generate_markdown(sample_episode, sample_transcription, sample_analysis, output_path)
+
             file_content = output_path.read_text(encoding="utf-8")
             string_content = generate_markdown_string(
                 sample_episode, sample_transcription, sample_analysis
             )
-            
+
             assert file_content == string_content
 
     def test_creates_parent_directories(
@@ -350,23 +336,17 @@ class TestGenerateMarkdown:
         """Parent directories are created if they don't exist."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "nested" / "dirs" / "output.md"
-            generate_markdown(
-                sample_episode, sample_transcription, sample_analysis, output_path
-            )
+            generate_markdown(sample_episode, sample_transcription, sample_analysis, output_path)
             assert output_path.exists()
 
-    def test_overwrites_existing_file(
-        self, sample_episode, sample_transcription, sample_analysis
-    ):
+    def test_overwrites_existing_file(self, sample_episode, sample_transcription, sample_analysis):
         """Existing file is overwritten."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "output.md"
             output_path.write_text("old content")
-            
-            generate_markdown(
-                sample_episode, sample_transcription, sample_analysis, output_path
-            )
-            
+
+            generate_markdown(sample_episode, sample_transcription, sample_analysis, output_path)
+
             content = output_path.read_text()
             assert "old content" not in content
             assert "title:" in content
@@ -379,11 +359,11 @@ class TestGenerateMarkdown:
             pub_date=datetime(2024, 1, 15),
             media_url="https://example.com/ep.mp3",
         )
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "output.md"
             generate_markdown(episode, sample_transcription, sample_analysis, output_path)
-            
+
             content = output_path.read_text(encoding="utf-8")
             assert "日本語タイトル" in content
 
@@ -393,41 +373,37 @@ class TestGenerateMarkdown:
         """Validates: Requirement 7.5 - Sponsor content marked."""
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "output.md"
-            generate_markdown(
-                sample_episode, sample_transcription, analysis_with_ads, output_path
-            )
-            
+            generate_markdown(sample_episode, sample_transcription, analysis_with_ads, output_path)
+
             content = output_path.read_text()
             assert "ADVERTISEMENT WAS REMOVED" in content
 
 
 class TestMarkdownOutputCompleteness:
     """Integration tests for complete markdown output.
-    
+
     Validates: Requirements 4.4, 4.5, 7.6
     """
 
-    def test_complete_output_structure(
-        self, sample_episode, sample_transcription, sample_analysis
-    ):
+    def test_complete_output_structure(self, sample_episode, sample_transcription, sample_analysis):
         """Output has complete structure with all required elements."""
         result = generate_markdown_string(
             sample_episode, sample_transcription, sample_analysis, "Test Podcast"
         )
-        
+
         # Frontmatter structure
         assert result.startswith("---\n")
         assert result.count("---") >= 2
-        
+
         # Required frontmatter fields (Requirement 4.5)
         assert "title:" in result
         assert "pub_date:" in result
-        
+
         # Analysis results (Requirement 7.6)
         assert "summary:" in result
         assert "topics:" in result
         assert "keywords:" in result
-        
+
         # Content present (Requirement 4.4)
         assert "Hello and welcome" in result
 
@@ -435,15 +411,13 @@ class TestMarkdownOutputCompleteness:
         self, sample_episode, sample_transcription, sample_analysis
     ):
         """Frontmatter is valid, parseable YAML."""
-        result = generate_markdown_string(
-            sample_episode, sample_transcription, sample_analysis
-        )
-        
+        result = generate_markdown_string(sample_episode, sample_transcription, sample_analysis)
+
         # Extract frontmatter
         parts = result.split("---")
         assert len(parts) >= 3
         yaml_content = parts[1].strip()
-        
+
         # Should parse without error
         data = yaml.safe_load(yaml_content)
         assert isinstance(data, dict)

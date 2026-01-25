@@ -22,9 +22,9 @@ from podtext.services.rss import (
 from podtext.services.transcriber import (
     TranscriptionError,
     TranscriptionResult,
+    handle_transcription_error,
     transcribe,
     transcribe_with_config,
-    handle_transcription_error,
 )
 
 __all__ = [

@@ -9,9 +9,9 @@ Requirements: 10.4
 from __future__ import annotations
 
 import os
+from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path
-from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -32,10 +32,10 @@ from podtext.services.itunes import ITunesAPIError, PodcastSearchResult
 from podtext.services.rss import EpisodeInfo, RSSFeedError
 from podtext.services.transcriber import TranscriptionError, TranscriptionResult
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def runner() -> CliRunner:
@@ -44,13 +44,13 @@ def runner() -> CliRunner:
 
 
 @pytest.fixture
-def temp_config_dir(tmp_path: Path) -> Generator[Path, None, None]:
+def temp_config_dir(tmp_path: Path) -> Generator[Path]:
     """Create a temporary directory for config files."""
     yield tmp_path
 
 
 @pytest.fixture
-def clean_env() -> Generator[None, None, None]:
+def clean_env() -> Generator[None]:
     """Ensure ANTHROPIC_API_KEY is not set during tests."""
     original = os.environ.pop("ANTHROPIC_API_KEY", None)
     yield
@@ -111,11 +111,12 @@ def sample_config(tmp_path: Path) -> Config:
 # Full Pipeline Integration Tests
 # ============================================================================
 
+
 class TestFullPipelineIntegration:
     """Integration tests for the full transcription pipeline.
-    
+
     Tests end-to-end flow with mocked external APIs.
-    
+
     Validates: Requirement 10.4
     """
 
@@ -136,7 +137,7 @@ class TestFullPipelineIntegration:
         tmp_path: Path,
     ) -> None:
         """Test successful end-to-end pipeline execution.
-        
+
         Validates: Requirement 10.4
         """
         # Setup mocks
@@ -165,7 +166,6 @@ class TestFullPipelineIntegration:
         mock_transcribe.assert_called_once()
         mock_analyze.assert_called_once()
         mock_generate.assert_called_once()
-
 
     @patch("podtext.core.pipeline.generate_markdown")
     @patch("podtext.core.pipeline.analyze_content")
@@ -240,11 +240,12 @@ class TestFullPipelineIntegration:
 # Error Handling Integration Tests
 # ============================================================================
 
+
 class TestErrorHandlingIntegration:
     """Integration tests for error handling paths.
-    
+
     Tests download failures, transcription failures, and graceful degradation.
-    
+
     Validates: Requirement 10.4
     """
 
@@ -323,9 +324,10 @@ class TestErrorHandlingIntegration:
 # Claude API Graceful Degradation Tests
 # ============================================================================
 
+
 class TestClaudeAPIGracefulDegradation:
     """Integration tests for graceful degradation when Claude API is unavailable.
-    
+
     Validates: Requirement 10.4
     """
 
@@ -405,15 +407,14 @@ class TestClaudeAPIGracefulDegradation:
 # Config File Creation Tests
 # ============================================================================
 
+
 class TestConfigFileCreation:
     """Integration tests for config file creation on first run.
-    
+
     Validates: Requirement 10.4
     """
 
-    def test_global_config_auto_created(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_global_config_auto_created(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that global config is auto-created with defaults on first run."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
@@ -437,21 +438,19 @@ class TestConfigFileCreation:
         assert "[storage]" in content
         assert "[whisper]" in content
 
-    def test_existing_config_not_overwritten(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_existing_config_not_overwritten(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that existing config is not overwritten on load."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         global_path.parent.mkdir(parents=True)
 
-        original_content = '''
+        original_content = """
 [api]
 anthropic_key = "my-custom-key"
 
 [whisper]
 model = "large"
-'''
+"""
         global_path.write_text(original_content)
 
         config = load_config(
@@ -467,27 +466,25 @@ model = "large"
         # File content should not be changed
         assert global_path.read_text() == original_content
 
-    def test_local_config_overrides_global(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_local_config_overrides_global(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that local config overrides global config values."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         local_path.parent.mkdir(parents=True)
         global_path.parent.mkdir(parents=True)
 
-        global_path.write_text('''
+        global_path.write_text("""
 [whisper]
 model = "small"
 
 [storage]
 temp_storage = false
-''')
+""")
 
-        local_path.write_text('''
+        local_path.write_text("""
 [whisper]
 model = "large"
-''')
+""")
 
         config = load_config(
             local_path=local_path,
@@ -505,16 +502,15 @@ model = "large"
 # CLI Command Integration Tests
 # ============================================================================
 
+
 class TestCLISearchCommand:
     """Integration tests for the CLI search command.
-    
+
     Validates: Requirement 10.4
     """
 
     @patch("podtext.cli.main.search_podcasts")
-    def test_search_command_success(
-        self, mock_search: MagicMock, runner: CliRunner
-    ) -> None:
+    def test_search_command_success(self, mock_search: MagicMock, runner: CliRunner) -> None:
         """Test successful search command execution."""
         mock_search.return_value = [
             PodcastSearchResult(
@@ -535,9 +531,7 @@ class TestCLISearchCommand:
         assert "Another Podcast" in result.output
 
     @patch("podtext.cli.main.search_podcasts")
-    def test_search_command_with_limit(
-        self, mock_search: MagicMock, runner: CliRunner
-    ) -> None:
+    def test_search_command_with_limit(self, mock_search: MagicMock, runner: CliRunner) -> None:
         """Test search command with custom limit."""
         mock_search.return_value = []
 
@@ -547,9 +541,7 @@ class TestCLISearchCommand:
         mock_search.assert_called_once_with("test", limit=5)
 
     @patch("podtext.cli.main.search_podcasts")
-    def test_search_command_api_error(
-        self, mock_search: MagicMock, runner: CliRunner
-    ) -> None:
+    def test_search_command_api_error(self, mock_search: MagicMock, runner: CliRunner) -> None:
         """Test search command handles API errors gracefully."""
         mock_search.side_effect = ITunesAPIError("Connection failed")
 
@@ -559,9 +551,7 @@ class TestCLISearchCommand:
         assert "Error" in result.output or "error" in result.output.lower()
 
     @patch("podtext.cli.main.search_podcasts")
-    def test_search_command_no_results(
-        self, mock_search: MagicMock, runner: CliRunner
-    ) -> None:
+    def test_search_command_no_results(self, mock_search: MagicMock, runner: CliRunner) -> None:
         """Test search command with no results."""
         mock_search.return_value = []
 
@@ -573,14 +563,12 @@ class TestCLISearchCommand:
 
 class TestCLIEpisodesCommand:
     """Integration tests for the CLI episodes command.
-    
+
     Validates: Requirement 10.4
     """
 
     @patch("podtext.cli.main.parse_feed")
-    def test_episodes_command_success(
-        self, mock_parse: MagicMock, runner: CliRunner
-    ) -> None:
+    def test_episodes_command_success(self, mock_parse: MagicMock, runner: CliRunner) -> None:
         """Test successful episodes command execution."""
         mock_parse.return_value = [
             EpisodeInfo(
@@ -605,23 +593,17 @@ class TestCLIEpisodesCommand:
         assert "2024-01-15" in result.output
 
     @patch("podtext.cli.main.parse_feed")
-    def test_episodes_command_with_limit(
-        self, mock_parse: MagicMock, runner: CliRunner
-    ) -> None:
+    def test_episodes_command_with_limit(self, mock_parse: MagicMock, runner: CliRunner) -> None:
         """Test episodes command with custom limit."""
         mock_parse.return_value = []
 
-        result = runner.invoke(
-            cli, ["episodes", "https://example.com/feed.xml", "--limit", "5"]
-        )
+        result = runner.invoke(cli, ["episodes", "https://example.com/feed.xml", "--limit", "5"])
 
         assert result.exit_code == 0
         mock_parse.assert_called_once_with("https://example.com/feed.xml", limit=5)
 
     @patch("podtext.cli.main.parse_feed")
-    def test_episodes_command_feed_error(
-        self, mock_parse: MagicMock, runner: CliRunner
-    ) -> None:
+    def test_episodes_command_feed_error(self, mock_parse: MagicMock, runner: CliRunner) -> None:
         """Test episodes command handles feed errors gracefully."""
         mock_parse.side_effect = RSSFeedError("Invalid RSS feed")
 
@@ -631,9 +613,7 @@ class TestCLIEpisodesCommand:
         assert "Error" in result.output or "error" in result.output.lower()
 
     @patch("podtext.cli.main.parse_feed")
-    def test_episodes_command_no_episodes(
-        self, mock_parse: MagicMock, runner: CliRunner
-    ) -> None:
+    def test_episodes_command_no_episodes(self, mock_parse: MagicMock, runner: CliRunner) -> None:
         """Test episodes command with no episodes."""
         mock_parse.return_value = []
 
@@ -645,7 +625,7 @@ class TestCLIEpisodesCommand:
 
 class TestCLITranscribeCommand:
     """Integration tests for the CLI transcribe command.
-    
+
     Validates: Requirement 10.4
     """
 
@@ -678,11 +658,11 @@ class TestCLITranscribeCommand:
                 media_url="https://example.com/ep1.mp3",
             ),
         ]
-        
+
         media_path = tmp_path / "episode.mp3"
         mock_download.return_value.__enter__ = MagicMock(return_value=media_path)
         mock_download.return_value.__exit__ = MagicMock(return_value=False)
-        
+
         mock_transcribe.return_value = TranscriptionResult(
             text="Test transcription",
             paragraphs=["Test transcription"],
@@ -690,9 +670,7 @@ class TestCLITranscribeCommand:
         )
         mock_analyze.return_value = AnalysisResult()
 
-        result = runner.invoke(
-            cli, ["transcribe", "https://example.com/feed.xml", "1"]
-        )
+        result = runner.invoke(cli, ["transcribe", "https://example.com/feed.xml", "1"])
 
         assert result.exit_code == 0
         assert "Transcribing" in result.output
@@ -719,13 +697,10 @@ class TestCLITranscribeCommand:
             ),
         ]
 
-        result = runner.invoke(
-            cli, ["transcribe", "https://example.com/feed.xml", "99"]
-        )
+        result = runner.invoke(cli, ["transcribe", "https://example.com/feed.xml", "99"])
 
         assert result.exit_code == 1
         assert "not found" in result.output.lower()
-
 
     @patch("podtext.services.downloader.download_with_optional_cleanup")
     @patch("podtext.cli.main.parse_feed")
@@ -750,9 +725,7 @@ class TestCLITranscribeCommand:
         ]
         mock_download.side_effect = DownloadError("Connection refused")
 
-        result = runner.invoke(
-            cli, ["transcribe", "https://example.com/feed.xml", "1"]
-        )
+        result = runner.invoke(cli, ["transcribe", "https://example.com/feed.xml", "1"])
 
         assert result.exit_code == 1
         assert "Error" in result.output or "error" in result.output.lower()
@@ -781,15 +754,13 @@ class TestCLITranscribeCommand:
                 media_url="https://example.com/ep1.mp3",
             ),
         ]
-        
+
         media_path = tmp_path / "episode.mp3"
         mock_download.return_value.__enter__ = MagicMock(return_value=media_path)
         mock_download.return_value.__exit__ = MagicMock(return_value=False)
         mock_transcribe.side_effect = TranscriptionError("Whisper failed")
 
-        result = runner.invoke(
-            cli, ["transcribe", "https://example.com/feed.xml", "1"]
-        )
+        result = runner.invoke(cli, ["transcribe", "https://example.com/feed.xml", "1"])
 
         assert result.exit_code == 1
         assert "Error" in result.output or "error" in result.output.lower()
@@ -807,9 +778,7 @@ class TestCLITranscribeCommand:
         mock_load_config.return_value = sample_config
         mock_parse.side_effect = RSSFeedError("Invalid feed")
 
-        result = runner.invoke(
-            cli, ["transcribe", "https://example.com/feed.xml", "1"]
-        )
+        result = runner.invoke(cli, ["transcribe", "https://example.com/feed.xml", "1"])
 
         assert result.exit_code == 1
         assert "Error" in result.output or "error" in result.output.lower()
@@ -819,9 +788,10 @@ class TestCLITranscribeCommand:
 # Language Detection Integration Tests
 # ============================================================================
 
+
 class TestLanguageDetectionIntegration:
     """Integration tests for language detection and warnings.
-    
+
     Validates: Requirement 10.4
     """
 
@@ -905,9 +875,10 @@ class TestLanguageDetectionIntegration:
 # Output Formatting Integration Tests
 # ============================================================================
 
+
 class TestOutputFormattingIntegration:
     """Integration tests for output formatting functions.
-    
+
     Validates: Requirement 10.4
     """
 
@@ -974,24 +945,23 @@ class TestOutputFormattingIntegration:
 # Environment Variable Integration Tests
 # ============================================================================
 
+
 class TestEnvironmentVariableIntegration:
     """Integration tests for environment variable handling.
-    
+
     Validates: Requirement 10.4
     """
 
-    def test_env_var_overrides_config_file(
-        self, temp_config_dir: Path
-    ) -> None:
+    def test_env_var_overrides_config_file(self, temp_config_dir: Path) -> None:
         """Test that ANTHROPIC_API_KEY env var overrides config file."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         global_path.parent.mkdir(parents=True)
 
-        global_path.write_text('''
+        global_path.write_text("""
 [api]
 anthropic_key = "config-file-key"
-''')
+""")
 
         os.environ["ANTHROPIC_API_KEY"] = "env-var-key"
         try:
@@ -1014,10 +984,10 @@ anthropic_key = "config-file-key"
         global_path = temp_config_dir / "global" / "config"
         global_path.parent.mkdir(parents=True)
 
-        global_path.write_text('''
+        global_path.write_text("""
 [api]
 anthropic_key = "config-file-key"
-''')
+""")
 
         config = load_config(
             local_path=local_path,
@@ -1032,9 +1002,10 @@ anthropic_key = "config-file-key"
 # Temporary Storage Integration Tests
 # ============================================================================
 
+
 class TestTemporaryStorageIntegration:
     """Integration tests for temporary storage cleanup.
-    
+
     Validates: Requirement 10.4
     """
 
@@ -1063,7 +1034,7 @@ class TestTemporaryStorageIntegration:
                 temp_storage=True,
             ),
         )
-        
+
         media_path = tmp_path / "media" / "episode.mp3"
         mock_download.return_value = media_path
         mock_transcribe.return_value = sample_transcription

@@ -16,7 +16,6 @@ from anthropic import APIConnectionError, APIError, AuthenticationError
 from podtext.core.prompts import Prompts
 from podtext.services.claude import (
     AnalysisResult,
-    ClaudeAPIError,
     ClaudeAPIUnavailableError,
     _parse_advertisement_response,
     _parse_keywords_response,
@@ -59,21 +58,21 @@ class TestParseAdvertisementResponse:
 
     def test_parse_valid_response(self) -> None:
         """Test parsing a valid JSON response."""
-        response = '''
+        response = """
         {
             "advertisements": [
                 {"start": 0, "end": 100, "confidence": 0.95},
                 {"start": 500, "end": 600, "confidence": 0.85}
             ]
         }
-        '''
+        """
         result = _parse_advertisement_response(response)
 
         assert result == [(0, 100), (500, 600)]
 
     def test_parse_response_with_surrounding_text(self) -> None:
         """Test parsing JSON embedded in explanation text."""
-        response = '''
+        response = """
         Here are the advertisements I found:
         {
             "advertisements": [
@@ -81,14 +80,14 @@ class TestParseAdvertisementResponse:
             ]
         }
         Let me know if you need more details.
-        '''
+        """
         result = _parse_advertisement_response(response)
 
         assert result == [(100, 200)]
 
     def test_filter_low_confidence(self) -> None:
         """Test that low confidence advertisements are filtered out."""
-        response = '''
+        response = """
         {
             "advertisements": [
                 {"start": 0, "end": 100, "confidence": 0.95},
@@ -96,7 +95,7 @@ class TestParseAdvertisementResponse:
                 {"start": 400, "end": 500, "confidence": 0.79}
             ]
         }
-        '''
+        """
         result = _parse_advertisement_response(response)
 
         # Only the first one has confidence >= 0.8
@@ -125,7 +124,7 @@ class TestParseAdvertisementResponse:
 
     def test_parse_invalid_positions(self) -> None:
         """Test that invalid positions are filtered out."""
-        response = '''
+        response = """
         {
             "advertisements": [
                 {"start": -1, "end": 100, "confidence": 0.9},
@@ -134,7 +133,7 @@ class TestParseAdvertisementResponse:
                 {"start": 200, "end": 300, "confidence": 0.9}
             ]
         }
-        '''
+        """
         result = _parse_advertisement_response(response)
 
         # Only the last one is valid
@@ -142,7 +141,7 @@ class TestParseAdvertisementResponse:
 
     def test_results_sorted_by_start(self) -> None:
         """Test that results are sorted by start position."""
-        response = '''
+        response = """
         {
             "advertisements": [
                 {"start": 500, "end": 600, "confidence": 0.9},
@@ -150,7 +149,7 @@ class TestParseAdvertisementResponse:
                 {"start": 300, "end": 400, "confidence": 0.9}
             ]
         }
-        '''
+        """
         result = _parse_advertisement_response(response)
 
         assert result == [(100, 200), (300, 400), (500, 600)]
@@ -168,10 +167,10 @@ class TestParseTopicsResponse:
 
     def test_parse_response_with_surrounding_text(self) -> None:
         """Test parsing JSON array embedded in text."""
-        response = '''
+        response = """
         Here are the topics:
         ["Topic 1", "Topic 2"]
-        '''
+        """
         result = _parse_topics_response(response)
 
         assert result == ["Topic 1", "Topic 2"]
@@ -213,10 +212,10 @@ class TestParseKeywordsResponse:
 
     def test_parse_response_with_surrounding_text(self) -> None:
         """Test parsing JSON array embedded in text."""
-        response = '''
+        response = """
         Keywords found:
         ["python", "podcast", "transcription"]
-        '''
+        """
         result = _parse_keywords_response(response)
 
         assert result == ["python", "podcast", "transcription"]
@@ -279,13 +278,13 @@ class TestDetectAdvertisements:
 
         mock_response = MagicMock()
         mock_content = MagicMock()
-        mock_content.text = '''
+        mock_content.text = """
         {
             "advertisements": [
                 {"start": 100, "end": 200, "confidence": 0.95}
             ]
         }
-        '''
+        """
         mock_response.content = [mock_content]
         mock_client.messages.create.return_value = mock_response
 
@@ -300,18 +299,14 @@ class TestDetectAdvertisements:
         mock_client.messages.create.assert_called_once()
 
     @patch("podtext.services.claude._create_client")
-    def test_api_connection_error_raises_unavailable(
-        self, mock_create_client: MagicMock
-    ) -> None:
+    def test_api_connection_error_raises_unavailable(self, mock_create_client: MagicMock) -> None:
         """Test that connection errors raise ClaudeAPIUnavailableError.
 
         Validates: Requirements 6.4
         """
         mock_client = MagicMock()
         mock_create_client.return_value = mock_client
-        mock_client.messages.create.side_effect = APIConnectionError(
-            request=MagicMock()
-        )
+        mock_client.messages.create.side_effect = APIConnectionError(request=MagicMock())
 
         prompts = Prompts()
         with pytest.raises(ClaudeAPIUnavailableError):
@@ -322,9 +317,7 @@ class TestDetectAdvertisements:
             )
 
     @patch("podtext.services.claude._create_client")
-    def test_authentication_error_raises_unavailable(
-        self, mock_create_client: MagicMock
-    ) -> None:
+    def test_authentication_error_raises_unavailable(self, mock_create_client: MagicMock) -> None:
         """Test that authentication errors raise ClaudeAPIUnavailableError.
 
         Validates: Requirements 6.4
@@ -405,9 +398,7 @@ class TestDetectAdvertisementsSafe:
         """
         mock_client = MagicMock()
         mock_create_client.return_value = mock_client
-        mock_client.messages.create.side_effect = APIConnectionError(
-            request=MagicMock()
-        )
+        mock_client.messages.create.side_effect = APIConnectionError(request=MagicMock())
 
         prompts = Prompts()
         result = detect_advertisements_safe(
@@ -508,7 +499,13 @@ class TestAnalyzeContent:
             # Keywords response
             MagicMock(content=[MagicMock(text='["keyword1", "keyword2"]')]),
             # Advertisement response
-            MagicMock(content=[MagicMock(text='{"advertisements": [{"start": 100, "end": 200, "confidence": 0.9}]}')]),
+            MagicMock(
+                content=[
+                    MagicMock(
+                        text='{"advertisements": [{"start": 100, "end": 200, "confidence": 0.9}]}'
+                    )
+                ]
+            ),
         ]
         mock_client.messages.create.side_effect = responses
 
@@ -537,9 +534,7 @@ class TestAnalyzeContent:
         """
         mock_client = MagicMock()
         mock_create_client.return_value = mock_client
-        mock_client.messages.create.side_effect = APIConnectionError(
-            request=MagicMock()
-        )
+        mock_client.messages.create.side_effect = APIConnectionError(request=MagicMock())
 
         prompts = Prompts()
         result = analyze_content(
@@ -629,9 +624,7 @@ class TestPromptsIntegration:
     @patch("podtext.services.claude._create_client")
     def test_uses_provided_prompts(self, mock_create_client: MagicMock) -> None:
         """Test that provided prompts are used."""
-        custom_prompts = Prompts(
-            advertisement_detection="Custom ad detection prompt"
-        )
+        custom_prompts = Prompts(advertisement_detection="Custom ad detection prompt")
 
         mock_client = MagicMock()
         mock_create_client.return_value = mock_client

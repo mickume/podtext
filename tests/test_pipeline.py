@@ -95,12 +95,12 @@ class TestGenerateOutputPath:
             media_url="https://example.com/ep.mp3",
         )
         path = _generate_output_path(episode, "Podcast/Name:Test", tmp_path)
-        
+
         # Check podcast directory name is sanitized
         assert "/" not in path.parent.name
         assert "\\" not in path.parent.name
         assert ":" not in path.parent.name
-        
+
         # Check filename is sanitized
         assert "/" not in path.name
         assert "\\" not in path.name
@@ -116,7 +116,7 @@ class TestGenerateOutputPath:
             media_url="https://example.com/ep.mp3",
         )
         path = _generate_output_path(episode, "B" * 200, tmp_path)
-        
+
         # Podcast directory name should be max 30 chars
         assert len(path.parent.name) <= 30
         # Filename (without .md) should be max 30 chars
@@ -148,7 +148,7 @@ class TestGenerateOutputPath:
 
 class TestRunPipeline:
     """Tests for run_pipeline function.
-    
+
     Validates: Requirements 3.1, 4.1, 6.1, 7.1
     """
 
@@ -169,7 +169,7 @@ class TestRunPipeline:
         tmp_path: Path,
     ) -> None:
         """Test successful execution of the full pipeline.
-        
+
         Validates: Requirements 3.1, 4.1, 6.1, 7.1
         """
         # Setup mocks
@@ -207,7 +207,7 @@ class TestRunPipeline:
         sample_config: Config,
     ) -> None:
         """Test that download failure raises MediaDownloadError.
-        
+
         Validates: Requirement 3.4
         """
         mock_download.side_effect = DownloadError("Connection failed")
@@ -228,7 +228,7 @@ class TestRunPipeline:
         tmp_path: Path,
     ) -> None:
         """Test that transcription failure raises TranscriptionPipelineError.
-        
+
         Validates: Requirement 4.1
         """
         media_path = tmp_path / "episode.mp3"
@@ -257,7 +257,7 @@ class TestRunPipeline:
         tmp_path: Path,
     ) -> None:
         """Test that Claude API unavailability results in warning, not failure.
-        
+
         Validates: Requirement 6.4
         """
         media_path = tmp_path / "episode.mp3"
@@ -294,7 +294,7 @@ class TestRunPipeline:
         tmp_path: Path,
     ) -> None:
         """Test that missing API key results in warning, not failure.
-        
+
         Validates: Requirement 6.4
         """
         media_path = tmp_path / "episode.mp3"
@@ -330,7 +330,7 @@ class TestRunPipeline:
         tmp_path: Path,
     ) -> None:
         """Test that non-English audio results in warning.
-        
+
         Validates: Requirement 5.2
         """
         media_path = tmp_path / "episode.mp3"
@@ -370,7 +370,7 @@ class TestRunPipeline:
         tmp_path: Path,
     ) -> None:
         """Test that skip_language_check flag is passed to transcriber.
-        
+
         Validates: Requirement 5.3
         """
         media_path = tmp_path / "episode.mp3"
@@ -539,7 +539,7 @@ class TestTranscriptionPipelineClass:
             podcast_name="Default Podcast",
         )
         custom_output = tmp_path / "custom.md"
-        result = pipeline.process(
+        pipeline.process(
             sample_episode,
             skip_language_check=True,
             podcast_name="Override Podcast",

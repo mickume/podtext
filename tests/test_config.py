@@ -6,8 +6,8 @@ Tests configuration loading, priority handling, and environment variable precede
 from __future__ import annotations
 
 import os
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 
@@ -22,13 +22,13 @@ from podtext.core.config import (
 
 
 @pytest.fixture
-def temp_config_dir(tmp_path: Path) -> Generator[Path, None, None]:
+def temp_config_dir(tmp_path: Path) -> Generator[Path]:
     """Create a temporary directory for config files."""
     yield tmp_path
 
 
 @pytest.fixture
-def clean_env() -> Generator[None, None, None]:
+def clean_env() -> Generator[None]:
     """Ensure ANTHROPIC_API_KEY is not set during tests."""
     original = os.environ.pop("ANTHROPIC_API_KEY", None)
     yield
@@ -39,9 +39,7 @@ def clean_env() -> Generator[None, None, None]:
 class TestConfigLoading:
     """Tests for basic configuration loading."""
 
-    def test_load_config_with_defaults(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_load_config_with_defaults(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test loading config when no config files exist."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
@@ -58,21 +56,19 @@ class TestConfigLoading:
         assert config.storage.temp_storage is False
         assert config.whisper.model == "base"
 
-    def test_load_config_from_global(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_load_config_from_global(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test loading config from global config file."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         global_path.parent.mkdir(parents=True)
 
-        global_path.write_text('''
+        global_path.write_text("""
 [api]
 anthropic_key = "global-key"
 
 [whisper]
 model = "small"
-''')
+""")
 
         config = load_config(
             local_path=local_path,
@@ -85,19 +81,17 @@ model = "small"
         # Defaults should still apply for unspecified values
         assert config.storage.media_dir == ".podtext/downloads/"
 
-    def test_load_config_from_local(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_load_config_from_local(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test loading config from local config file."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         local_path.parent.mkdir(parents=True)
 
-        local_path.write_text('''
+        local_path.write_text("""
 [storage]
 media_dir = "/custom/media/"
 temp_storage = true
-''')
+""")
 
         config = load_config(
             local_path=local_path,
@@ -117,16 +111,14 @@ class TestConfigPriority:
     Validates: Requirements 8.1, 8.2
     """
 
-    def test_local_overrides_global(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_local_overrides_global(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that local config values override global config values."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         local_path.parent.mkdir(parents=True)
         global_path.parent.mkdir(parents=True)
 
-        global_path.write_text('''
+        global_path.write_text("""
 [api]
 anthropic_key = "global-key"
 
@@ -135,12 +127,12 @@ model = "small"
 
 [storage]
 media_dir = "/global/media/"
-''')
+""")
 
-        local_path.write_text('''
+        local_path.write_text("""
 [whisper]
 model = "large"
-''')
+""")
 
         config = load_config(
             local_path=local_path,
@@ -154,26 +146,24 @@ model = "large"
         assert config.api.anthropic_key == "global-key"
         assert config.storage.media_dir == "/global/media/"
 
-    def test_local_partial_override(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_local_partial_override(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that local config can partially override a section."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         local_path.parent.mkdir(parents=True)
         global_path.parent.mkdir(parents=True)
 
-        global_path.write_text('''
+        global_path.write_text("""
 [storage]
 media_dir = "/global/media/"
 output_dir = "/global/output/"
 temp_storage = false
-''')
+""")
 
-        local_path.write_text('''
+        local_path.write_text("""
 [storage]
 media_dir = "/local/media/"
-''')
+""")
 
         config = load_config(
             local_path=local_path,
@@ -200,10 +190,10 @@ class TestEnvironmentVariablePrecedence:
         global_path = temp_config_dir / "global" / "config"
         global_path.parent.mkdir(parents=True)
 
-        global_path.write_text('''
+        global_path.write_text("""
 [api]
 anthropic_key = "config-key"
-''')
+""")
 
         # Set environment variable
         os.environ["ANTHROPIC_API_KEY"] = "env-key"
@@ -221,18 +211,16 @@ anthropic_key = "config-key"
         finally:
             del os.environ["ANTHROPIC_API_KEY"]
 
-    def test_config_used_when_env_var_not_set(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_config_used_when_env_var_not_set(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that config file value is used when env var is not set."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         global_path.parent.mkdir(parents=True)
 
-        global_path.write_text('''
+        global_path.write_text("""
 [api]
 anthropic_key = "config-key"
-''')
+""")
 
         config = load_config(
             local_path=local_path,
@@ -242,18 +230,16 @@ anthropic_key = "config-key"
 
         assert config.get_anthropic_key() == "config-key"
 
-    def test_empty_env_var_uses_config(
-        self, temp_config_dir: Path
-    ) -> None:
+    def test_empty_env_var_uses_config(self, temp_config_dir: Path) -> None:
         """Test that empty env var falls back to config file value."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         global_path.parent.mkdir(parents=True)
 
-        global_path.write_text('''
+        global_path.write_text("""
 [api]
 anthropic_key = "config-key"
-''')
+""")
 
         # Set empty environment variable
         os.environ["ANTHROPIC_API_KEY"] = ""
@@ -276,9 +262,7 @@ class TestAutoCreateGlobalConfig:
     Validates: Requirements 8.3
     """
 
-    def test_auto_create_global_config(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_auto_create_global_config(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that global config is auto-created with defaults."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
@@ -297,9 +281,7 @@ class TestAutoCreateGlobalConfig:
         assert "[storage]" in content
         assert "[whisper]" in content
 
-    def test_no_auto_create_when_disabled(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_no_auto_create_when_disabled(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that global config is not created when auto_create is False."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
@@ -322,10 +304,10 @@ class TestAutoCreateGlobalConfig:
         global_path = temp_config_dir / "global" / "config"
         global_path.parent.mkdir(parents=True)
 
-        original_content = '''
+        original_content = """
 [api]
 anthropic_key = "my-custom-key"
-'''
+"""
         global_path.write_text(original_content)
 
         load_config(
@@ -341,18 +323,16 @@ anthropic_key = "my-custom-key"
 class TestConfigValidation:
     """Tests for configuration validation."""
 
-    def test_invalid_whisper_model(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_invalid_whisper_model(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that invalid whisper model raises ConfigError."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         local_path.parent.mkdir(parents=True)
 
-        local_path.write_text('''
+        local_path.write_text("""
 [whisper]
 model = "invalid-model"
-''')
+""")
 
         with pytest.raises(ConfigError) as exc_info:
             load_config(
@@ -364,9 +344,7 @@ model = "invalid-model"
         assert "Invalid whisper model" in str(exc_info.value)
         assert "invalid-model" in str(exc_info.value)
 
-    def test_invalid_toml_syntax(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_invalid_toml_syntax(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that invalid TOML syntax raises ConfigError."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
@@ -383,9 +361,7 @@ model = "invalid-model"
 
         assert "Invalid TOML" in str(exc_info.value)
 
-    def test_valid_whisper_models(
-        self, temp_config_dir: Path, clean_env: None
-    ) -> None:
+    def test_valid_whisper_models(self, temp_config_dir: Path, clean_env: None) -> None:
         """Test that all valid whisper models are accepted."""
         valid_models = ["tiny", "base", "small", "medium", "large"]
 

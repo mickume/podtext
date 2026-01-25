@@ -8,8 +8,8 @@ Requirements: 9.1, 9.2, 9.3
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 
@@ -26,7 +26,7 @@ from podtext.core.prompts import (
 
 
 @pytest.fixture
-def temp_prompts_dir(tmp_path: Path) -> Generator[Path, None, None]:
+def temp_prompts_dir(tmp_path: Path) -> Generator[Path]:
     """Create a temporary directory for prompts files."""
     yield tmp_path
 
@@ -173,10 +173,10 @@ class TestLoadPrompts:
     Validates: Requirements 9.1, 9.2, 9.3
     """
 
-    def test_load_prompts_no_file_creates_default_in_global(
-        self, temp_prompts_dir: Path
-    ) -> None:
-        """Test that missing prompts file creates default in global location when local .podtext doesn't exist.
+    def test_load_prompts_no_file_creates_default_in_global(self, temp_prompts_dir: Path) -> None:
+        """Test missing prompts file creates default in global location.
+
+        When local .podtext doesn't exist, creates default in global location.
 
         Validates: Requirements 9.3
         """
@@ -196,7 +196,7 @@ class TestLoadPrompts:
         # Should create the global prompts file (since local .podtext doesn't exist)
         assert global_path.exists()
         assert not local_path.exists()
-        content = global_path.read_text(encoding='utf-8')
+        content = global_path.read_text(encoding="utf-8")
         assert "# Advertisement Detection" in content
         assert "# Content Summary" in content
 
@@ -209,7 +209,7 @@ class TestLoadPrompts:
         """
         local_path = temp_prompts_dir / "local" / "prompts.md"
         global_path = temp_prompts_dir / "global" / "prompts.md"
-        
+
         # Create the local .podtext directory
         local_path.parent.mkdir(parents=True)
 
@@ -226,7 +226,7 @@ class TestLoadPrompts:
         # Should create the local prompts file (since local .podtext exists)
         assert local_path.exists()
         assert not global_path.exists()
-        content = local_path.read_text(encoding='utf-8')
+        content = local_path.read_text(encoding="utf-8")
         assert "# Advertisement Detection" in content
         assert "# Content Summary" in content
 
@@ -247,9 +247,7 @@ class TestLoadPrompts:
         captured = capsys.readouterr()
         assert captured.err == ""
 
-    def test_load_prompts_from_local_file(
-        self, temp_prompts_dir: Path
-    ) -> None:
+    def test_load_prompts_from_local_file(self, temp_prompts_dir: Path) -> None:
         """Test loading prompts from local file.
 
         Validates: Requirements 9.2
@@ -286,9 +284,7 @@ Local keyword prompt.
         assert prompts.topic_extraction == "Local topic prompt."
         assert prompts.keyword_extraction == "Local keyword prompt."
 
-    def test_load_prompts_from_global_file(
-        self, temp_prompts_dir: Path
-    ) -> None:
+    def test_load_prompts_from_global_file(self, temp_prompts_dir: Path) -> None:
         """Test loading prompts from global file when local doesn't exist.
 
         Validates: Requirements 9.2
@@ -323,9 +319,7 @@ Global keyword prompt.
         assert prompts.advertisement_detection == "Global ad prompt."
         assert prompts.content_summary == "Global summary prompt."
 
-    def test_local_file_takes_priority_over_global(
-        self, temp_prompts_dir: Path
-    ) -> None:
+    def test_local_file_takes_priority_over_global(self, temp_prompts_dir: Path) -> None:
         """Test that local prompts file takes priority over global."""
         local_path = temp_prompts_dir / "local" / "prompts.md"
         global_path = temp_prompts_dir / "global" / "prompts.md"
@@ -471,9 +465,7 @@ class TestRuntimeLoading:
     Validates: Requirements 9.2 - prompts loaded at runtime
     """
 
-    def test_prompts_loaded_fresh_each_call(
-        self, temp_prompts_dir: Path
-    ) -> None:
+    def test_prompts_loaded_fresh_each_call(self, temp_prompts_dir: Path) -> None:
         """Test that prompts are loaded fresh on each call."""
         local_path = temp_prompts_dir / "local" / "prompts.md"
         global_path = temp_prompts_dir / "global" / "prompts.md"

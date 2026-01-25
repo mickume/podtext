@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import hashlib
 import sys
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
 
 import httpx
@@ -119,9 +120,7 @@ def download_media(
         # Clean up partial download
         if dest_path.exists():
             dest_path.unlink()
-        raise DownloadError(
-            f"HTTP error {e.response.status_code} downloading {url}: {e}"
-        ) from e
+        raise DownloadError(f"HTTP error {e.response.status_code} downloading {url}: {e}") from e
 
     except httpx.RequestError as e:
         # Clean up partial download

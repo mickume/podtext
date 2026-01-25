@@ -163,7 +163,7 @@ class TestParseSearchResults:
 
 class TestSearchPodcasts:
     """Tests for search_podcasts function.
-    
+
     Validates: Requirements 1.1, 1.5
     """
 
@@ -190,7 +190,7 @@ class TestSearchPodcasts:
     @patch("podtext.services.itunes.httpx.Client")
     def test_search_successful(self, mock_client_class: MagicMock) -> None:
         """Test successful podcast search.
-        
+
         Validates: Requirement 1.1
         """
         # Setup mock response
@@ -270,14 +270,14 @@ class TestSearchPodcasts:
 
 class TestSearchPodcastsErrorHandling:
     """Tests for error handling in search_podcasts.
-    
+
     Validates: Requirement 1.5
     """
 
     @patch("podtext.services.itunes.httpx.Client")
     def test_timeout_error(self, mock_client_class: MagicMock) -> None:
         """Test that timeout raises ITunesAPIError.
-        
+
         Validates: Requirement 1.5
         """
         mock_client = MagicMock()
@@ -294,7 +294,7 @@ class TestSearchPodcastsErrorHandling:
     @patch("podtext.services.itunes.httpx.Client")
     def test_http_status_error(self, mock_client_class: MagicMock) -> None:
         """Test that HTTP error status raises ITunesAPIError.
-        
+
         Validates: Requirement 1.5
         """
         mock_response = MagicMock()
@@ -320,7 +320,7 @@ class TestSearchPodcastsErrorHandling:
     @patch("podtext.services.itunes.httpx.Client")
     def test_connection_error(self, mock_client_class: MagicMock) -> None:
         """Test that connection error raises ITunesAPIError.
-        
+
         Validates: Requirement 1.5
         """
         mock_client = MagicMock()
@@ -337,7 +337,7 @@ class TestSearchPodcastsErrorHandling:
     @patch("podtext.services.itunes.httpx.Client")
     def test_invalid_json_response(self, mock_client_class: MagicMock) -> None:
         """Test that invalid JSON response raises ITunesAPIError.
-        
+
         Validates: Requirement 1.5
         """
         mock_response = MagicMock()
@@ -358,7 +358,7 @@ class TestSearchPodcastsErrorHandling:
     @patch("podtext.services.itunes.httpx.Client")
     def test_request_error(self, mock_client_class: MagicMock) -> None:
         """Test that generic request error raises ITunesAPIError.
-        
+
         Validates: Requirement 1.5
         """
         mock_client = MagicMock()

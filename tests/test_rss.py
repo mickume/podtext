@@ -7,8 +7,7 @@ Requirements: 2.1, 2.5
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -29,7 +28,7 @@ class TestEpisodeInfo:
 
     def test_create_episode_info(self) -> None:
         """Test creating an EpisodeInfo."""
-        pub_date = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        pub_date = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
         episode = EpisodeInfo(
             index=1,
             title="Test Episode",
@@ -44,7 +43,7 @@ class TestEpisodeInfo:
 
     def test_episode_info_equality(self) -> None:
         """Test that two identical episodes are equal."""
-        pub_date = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        pub_date = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
         episode1 = EpisodeInfo(
             index=1,
             title="Test Episode",
@@ -323,7 +322,7 @@ class TestParseFeedEntries:
 
 class TestParseFeed:
     """Tests for parse_feed function.
-    
+
     Validates: Requirements 2.1, 2.5
     """
 
@@ -357,7 +356,7 @@ class TestParseFeed:
         self, mock_feedparser: MagicMock, mock_client_class: MagicMock
     ) -> None:
         """Test successful feed parsing.
-        
+
         Validates: Requirement 2.1
         """
         # Setup mock HTTP response
@@ -463,14 +462,14 @@ class TestParseFeed:
 
 class TestParseFeedErrorHandling:
     """Tests for error handling in parse_feed.
-    
+
     Validates: Requirement 2.5
     """
 
     @patch("podtext.services.rss.httpx.Client")
     def test_timeout_error(self, mock_client_class: MagicMock) -> None:
         """Test that timeout raises RSSFeedError.
-        
+
         Validates: Requirement 2.5
         """
         mock_client = MagicMock()
@@ -487,7 +486,7 @@ class TestParseFeedErrorHandling:
     @patch("podtext.services.rss.httpx.Client")
     def test_http_status_error(self, mock_client_class: MagicMock) -> None:
         """Test that HTTP error status raises RSSFeedError.
-        
+
         Validates: Requirement 2.5
         """
         mock_response = MagicMock()
@@ -513,7 +512,7 @@ class TestParseFeedErrorHandling:
     @patch("podtext.services.rss.httpx.Client")
     def test_connection_error(self, mock_client_class: MagicMock) -> None:
         """Test that connection error raises RSSFeedError.
-        
+
         Validates: Requirement 2.5
         """
         mock_client = MagicMock()
@@ -533,7 +532,7 @@ class TestParseFeedErrorHandling:
         self, mock_feedparser: MagicMock, mock_client_class: MagicMock
     ) -> None:
         """Test that invalid feed with no entries raises RSSFeedError.
-        
+
         Validates: Requirement 2.5
         """
         mock_response = MagicMock()
@@ -563,7 +562,7 @@ class TestParseFeedErrorHandling:
         self, mock_feedparser: MagicMock, mock_client_class: MagicMock
     ) -> None:
         """Test that feed with no episodes raises RSSFeedError.
-        
+
         Validates: Requirement 2.5
         """
         mock_response = MagicMock()
@@ -590,7 +589,7 @@ class TestParseFeedErrorHandling:
     @patch("podtext.services.rss.httpx.Client")
     def test_request_error(self, mock_client_class: MagicMock) -> None:
         """Test that generic request error raises RSSFeedError.
-        
+
         Validates: Requirement 2.5
         """
         mock_client = MagicMock()
@@ -610,7 +609,7 @@ class TestParseFeedErrorHandling:
         self, mock_feedparser: MagicMock, mock_client_class: MagicMock
     ) -> None:
         """Test that malformed feed with entries still parses.
-        
+
         Some feeds are technically malformed but still parseable.
         """
         mock_response = MagicMock()

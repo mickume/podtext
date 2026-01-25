@@ -8,7 +8,6 @@ Requirements: 4.1, 4.2, 4.3, 5.1, 5.2, 5.3
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -16,7 +15,6 @@ import pytest
 
 from podtext.services.transcriber import (
     DEFAULT_MODEL,
-    ENGLISH_LANGUAGE_CODE,
     VALID_MODELS,
     TranscriptionError,
     TranscriptionResult,
@@ -97,7 +95,7 @@ class TestValidateAudioPath:
 
 class TestExtractParagraphs:
     """Tests for _extract_paragraphs function.
-    
+
     Validates: Requirement 4.3
     """
 
@@ -171,7 +169,7 @@ class TestExtractParagraphs:
 
 class TestDetectLanguage:
     """Tests for _detect_language function.
-    
+
     Validates: Requirement 5.1
     """
 
@@ -196,7 +194,7 @@ class TestDetectLanguage:
 
 class TestWarnNonEnglish:
     """Tests for _warn_non_english function.
-    
+
     Validates: Requirement 5.2
     """
 
@@ -211,7 +209,7 @@ class TestWarnNonEnglish:
 
 class TestTranscribe:
     """Tests for transcribe function.
-    
+
     Validates: Requirements 4.1, 4.2, 4.3, 5.1, 5.2, 5.3
     """
 
@@ -227,11 +225,9 @@ class TestTranscribe:
 
     @patch("podtext.services.transcriber.MLX_WHISPER_AVAILABLE", True)
     @patch("podtext.services.transcriber.mlx_whisper")
-    def test_transcribe_success(
-        self, mock_mlx_whisper: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_transcribe_success(self, mock_mlx_whisper: MagicMock, tmp_path: Path) -> None:
         """Test successful transcription.
-        
+
         Validates: Requirement 4.1
         """
         audio_file = tmp_path / "test.mp3"
@@ -258,7 +254,7 @@ class TestTranscribe:
         self, mock_mlx_whisper: MagicMock, tmp_path: Path
     ) -> None:
         """Test that transcribe uses the specified model.
-        
+
         Validates: Requirement 4.2
         """
         audio_file = tmp_path / "test.mp3"
@@ -278,11 +274,9 @@ class TestTranscribe:
 
     @patch("podtext.services.transcriber.MLX_WHISPER_AVAILABLE", True)
     @patch("podtext.services.transcriber.mlx_whisper")
-    def test_transcribe_default_model(
-        self, mock_mlx_whisper: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_transcribe_default_model(self, mock_mlx_whisper: MagicMock, tmp_path: Path) -> None:
         """Test that transcribe uses default model when not specified.
-        
+
         Validates: Requirement 4.2
         """
         audio_file = tmp_path / "test.mp3"
@@ -305,7 +299,7 @@ class TestTranscribe:
         self, mock_mlx_whisper: MagicMock, tmp_path: Path
     ) -> None:
         """Test that transcribe extracts paragraphs from segments.
-        
+
         Validates: Requirement 4.3
         """
         audio_file = tmp_path / "test.mp3"
@@ -329,11 +323,9 @@ class TestTranscribe:
 
     @patch("podtext.services.transcriber.MLX_WHISPER_AVAILABLE", True)
     @patch("podtext.services.transcriber.mlx_whisper")
-    def test_transcribe_detects_language(
-        self, mock_mlx_whisper: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_transcribe_detects_language(self, mock_mlx_whisper: MagicMock, tmp_path: Path) -> None:
         """Test that transcribe detects language.
-        
+
         Validates: Requirement 5.1
         """
         audio_file = tmp_path / "test.mp3"
@@ -358,7 +350,7 @@ class TestTranscribe:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that transcribe warns for non-English content.
-        
+
         Validates: Requirement 5.2
         """
         audio_file = tmp_path / "test.mp3"
@@ -409,7 +401,7 @@ class TestTranscribe:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Test that skip_language_check bypasses language detection.
-        
+
         Validates: Requirement 5.3
         """
         audio_file = tmp_path / "test.mp3"
@@ -464,7 +456,7 @@ class TestTranscribe:
 
 class TestTranscribeWithConfig:
     """Tests for transcribe_with_config function.
-    
+
     Validates: Requirement 4.2
     """
 
@@ -481,9 +473,7 @@ class TestTranscribeWithConfig:
         mock_transcribe.assert_called_once_with(audio_file, "large", False)
 
     @patch("podtext.services.transcriber.transcribe")
-    def test_uses_default_model_when_none(
-        self, mock_transcribe: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_uses_default_model_when_none(self, mock_transcribe: MagicMock, tmp_path: Path) -> None:
         """Test that default model is used when None provided."""
         audio_file = tmp_path / "test.mp3"
         mock_transcribe.return_value = TranscriptionResult(
@@ -495,9 +485,7 @@ class TestTranscribeWithConfig:
         mock_transcribe.assert_called_once_with(audio_file, DEFAULT_MODEL, False)
 
     @patch("podtext.services.transcriber.transcribe")
-    def test_passes_skip_language_check(
-        self, mock_transcribe: MagicMock, tmp_path: Path
-    ) -> None:
+    def test_passes_skip_language_check(self, mock_transcribe: MagicMock, tmp_path: Path) -> None:
         """Test that skip_language_check is passed through."""
         audio_file = tmp_path / "test.mp3"
         mock_transcribe.return_value = TranscriptionResult(
@@ -511,7 +499,7 @@ class TestTranscribeWithConfig:
 
 class TestAllValidModels:
     """Tests to ensure all valid models work correctly.
-    
+
     Validates: Requirement 4.2
     """
 

@@ -10,18 +10,17 @@ Requirements: 4.1, 4.2, 4.3, 5.1, 5.2, 5.3
 from __future__ import annotations
 
 import sys
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 # Try to import mlx_whisper, but allow graceful fallback for testing
 try:
-    import mlx_whisper
+    import mlx_whisper  # type: ignore[import-untyped]
 
     MLX_WHISPER_AVAILABLE = True
 except ImportError:
-    mlx_whisper = None  # type: ignore[assignment]
+    mlx_whisper = None  # type: ignore[assignment,unused-ignore]
     MLX_WHISPER_AVAILABLE = False
 
 if TYPE_CHECKING:
@@ -79,8 +78,7 @@ def _check_mlx_whisper_available() -> None:
     """
     if not MLX_WHISPER_AVAILABLE:
         raise TranscriptionError(
-            "mlx-whisper is not installed. "
-            "Install it with: pip install mlx-whisper"
+            "mlx-whisper is not installed. Install it with: pip install mlx-whisper"
         )
 
 
@@ -95,8 +93,7 @@ def _validate_model(model: str) -> None:
     """
     if model not in VALID_MODELS:
         raise TranscriptionError(
-            f"Invalid Whisper model '{model}'. "
-            f"Valid options: {', '.join(sorted(VALID_MODELS))}"
+            f"Invalid Whisper model '{model}'. Valid options: {', '.join(sorted(VALID_MODELS))}"
         )
 
 
@@ -170,7 +167,8 @@ def _detect_language(result: dict[str, Any]) -> str:
     Validates: Requirements 5.1
     """
     # mlx_whisper returns language in the result dict
-    return result.get("language", "en")
+    lang = result.get("language", "en")
+    return str(lang) if lang is not None else "en"
 
 
 def _warn_non_english(language: str) -> None:
@@ -225,7 +223,7 @@ def transcribe(
         # The transcribe function returns a dict with 'text', 'segments', 'language'
         # Get the correct Hugging Face repo path for the model
         repo_path = MODEL_REPO_MAP.get(model, f"mlx-community/whisper-{model}.en-mlx")
-        
+
         result = mlx_whisper.transcribe(
             str(audio_path),
             path_or_hf_repo=repo_path,

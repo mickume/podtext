@@ -12,7 +12,7 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
 
-import feedparser
+import feedparser  # type: ignore[import-untyped]
 import httpx
 
 # Default timeout for feed requests (in seconds)
@@ -21,7 +21,7 @@ DEFAULT_TIMEOUT = 30.0
 
 class RSSFeedError(Exception):
     """Raised when the RSS feed is invalid or unreachable.
-    
+
     Validates: Requirement 2.5
     """
 
@@ -29,7 +29,7 @@ class RSSFeedError(Exception):
 @dataclass
 class EpisodeInfo:
     """Represents a podcast episode from an RSS feed.
-    
+
     Attributes:
         index: The index number assigned to the episode (1-based, most recent first).
         title: The title of the episode.
@@ -38,7 +38,7 @@ class EpisodeInfo:
         show_notes: Show notes content from the RSS feed (may contain HTML).
         feed_url: The RSS feed URL from which this episode was discovered (optional).
     """
-    
+
     index: int
     title: str
     pub_date: datetime
@@ -49,18 +49,18 @@ class EpisodeInfo:
 
 def _parse_pub_date(date_str: str | None) -> datetime:
     """Parse a publication date string from RSS feed.
-    
+
     RSS feeds typically use RFC 2822 date format.
-    
+
     Args:
         date_str: The date string from the RSS feed.
-        
+
     Returns:
         Parsed datetime object, or datetime.min if parsing fails.
     """
     if not date_str:
         return datetime.min
-    
+
     try:
         return parsedate_to_datetime(date_str)
     except (ValueError, TypeError):
@@ -73,12 +73,12 @@ def _parse_pub_date(date_str: str | None) -> datetime:
 
 def _extract_media_url(entry: Any) -> str | None:
     """Extract the media URL from an RSS feed entry.
-    
+
     Looks for enclosures (standard podcast format) or media content.
-    
+
     Args:
         entry: A feedparser entry object.
-        
+
     Returns:
         The media URL if found, None otherwise.
     """
@@ -88,14 +88,14 @@ def _extract_media_url(entry: Any) -> str | None:
         href = enclosure.get("href") or enclosure.get("url")
         if href:
             return str(href)
-    
+
     # Check media content as fallback
     media_content = getattr(entry, "media_content", [])
     for media in media_content:
         url = media.get("url")
         if url:
             return str(url)
-    
+
     # Check for links with audio/video type
     links = getattr(entry, "links", [])
     for link in links:
@@ -104,21 +104,21 @@ def _extract_media_url(entry: Any) -> str | None:
             href = link.get("href")
             if href:
                 return str(href)
-    
+
     return None
 
 
 def _extract_show_notes(entry: Any) -> str:
     """Extract show notes from an RSS feed entry.
-    
+
     Checks fields in priority order: content, summary, description.
-    
+
     Args:
         entry: A feedparser entry object.
-        
+
     Returns:
         Show notes content as string, or empty string if not found.
-        
+
     Validates: Requirements 1.1, 1.2, 1.3
     """
     try:
@@ -128,21 +128,21 @@ def _extract_show_notes(entry: Any) -> str:
             value = content[0].get("value", "")
             if value and value.strip():
                 return str(value)
-        
+
         # Priority 2: summary field
         summary = getattr(entry, "summary", None)
         if summary and str(summary).strip():
             return str(summary)
-        
+
         # Priority 3: description field
         description = getattr(entry, "description", None)
         if description and str(description).strip():
             return str(description)
-        
+
     except Exception:
         # Log warning and continue with empty show notes
         pass
-    
+
     return ""
 
 
@@ -152,34 +152,34 @@ def _parse_feed_entries(
     feed_url: str = "",
 ) -> list[EpisodeInfo]:
     """Parse feed entries into EpisodeInfo objects.
-    
+
     Args:
         feed: A feedparser parsed feed object.
         limit: Maximum number of episodes to return.
         feed_url: The RSS feed URL to include in each episode.
-        
+
     Returns:
         List of EpisodeInfo objects, sorted by publication date (most recent first).
     """
     episodes: list[EpisodeInfo] = []
-    
+
     entries = feed.entries[:limit] if limit > 0 else []
-    
+
     for entry in entries:
         title = getattr(entry, "title", None)
         if not title:
             continue
-        
+
         media_url = _extract_media_url(entry)
         if not media_url:
             continue
-        
+
         pub_date_str = getattr(entry, "published", None) or getattr(entry, "updated", None)
         pub_date = _parse_pub_date(pub_date_str)
-        
+
         # Extract show notes
         show_notes = _extract_show_notes(entry)
-        
+
         episodes.append(
             EpisodeInfo(
                 index=0,  # Will be assigned after sorting
@@ -190,14 +190,14 @@ def _parse_feed_entries(
                 feed_url=feed_url if feed_url else None,
             )
         )
-    
+
     # Sort by publication date (most recent first)
     episodes.sort(key=lambda e: e.pub_date, reverse=True)
-    
+
     # Assign index numbers (1-based)
     for i, episode in enumerate(episodes, start=1):
         episode.index = i
-    
+
     return episodes
 
 
@@ -207,24 +207,24 @@ def parse_feed(
     timeout: float = DEFAULT_TIMEOUT,
 ) -> list[EpisodeInfo]:
     """Parse a podcast RSS feed and extract episode information.
-    
+
     Retrieves the RSS feed from the given URL and extracts episode information
     including title, publication date, and media URL. Episodes are sorted by
     publication date (most recent first) and assigned index numbers.
-    
+
     Args:
         feed_url: URL of the podcast RSS feed.
         limit: Maximum number of episodes to return (default: 10).
         timeout: Request timeout in seconds (default: 30.0).
-        
+
     Returns:
         List of EpisodeInfo objects containing episode details.
-        
+
     Raises:
         RSSFeedError: If the feed is invalid, unreachable, or cannot be parsed.
-        
+
     Validates: Requirements 2.1, 2.5
-    
+
     Example:
         >>> episodes = parse_feed("https://example.com/podcast/feed.xml", limit=5)
         >>> for ep in episodes:
@@ -232,53 +232,47 @@ def parse_feed(
     """
     if not feed_url or not feed_url.strip():
         raise RSSFeedError("Feed URL cannot be empty")
-    
+
     # Ensure limit is positive
     if limit <= 0:
         return []
-    
+
     feed_url = feed_url.strip()
-    
+
     # Fetch the feed content using httpx for better error handling
     try:
         with httpx.Client(timeout=timeout) as client:
             response = client.get(feed_url)
             response.raise_for_status()
             feed_content = response.text
-            
+
     except httpx.TimeoutException as e:
-        raise RSSFeedError(
-            f"RSS feed request timed out after {timeout} seconds"
-        ) from e
-        
+        raise RSSFeedError(f"RSS feed request timed out after {timeout} seconds") from e
+
     except httpx.HTTPStatusError as e:
         raise RSSFeedError(
             f"RSS feed returned error status {e.response.status_code}: {e.response.text[:200]}"
         ) from e
-        
+
     except httpx.RequestError as e:
-        raise RSSFeedError(
-            f"Failed to connect to RSS feed: {e}"
-        ) from e
-    
+        raise RSSFeedError(f"Failed to connect to RSS feed: {e}") from e
+
     # Parse the feed content
     try:
         feed = feedparser.parse(feed_content)
     except Exception as e:
         raise RSSFeedError(f"Failed to parse RSS feed: {e}") from e
-    
+
     # Check for feed-level errors
     if feed.bozo and feed.bozo_exception:
         # feedparser sets bozo=True for malformed feeds
         # Some feeds are technically malformed but still parseable
         # Only raise if we have no entries
         if not feed.entries:
-            raise RSSFeedError(
-                f"Invalid RSS feed: {feed.bozo_exception}"
-            )
-    
+            raise RSSFeedError(f"Invalid RSS feed: {feed.bozo_exception}")
+
     # Check if feed has any entries
     if not feed.entries:
         raise RSSFeedError("RSS feed contains no episodes")
-    
+
     return _parse_feed_entries(feed, limit, feed_url)

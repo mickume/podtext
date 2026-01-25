@@ -105,7 +105,7 @@ def _generate_default_config_toml() -> str:
     Returns:
         TOML-formatted string with default configuration values.
     """
-    return '''# Podtext Configuration File
+    return """# Podtext Configuration File
 
 [api]
 # Anthropic API key for Claude integration
@@ -123,7 +123,7 @@ temp_storage = false
 [whisper]
 # Whisper model to use: tiny, base, small, medium, large
 model = "base"
-'''
+"""
 
 
 def _ensure_global_config_exists(global_path: Path) -> None:

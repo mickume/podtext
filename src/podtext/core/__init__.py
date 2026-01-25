@@ -9,16 +9,16 @@ from podtext.core.config import (
     get_config,
     load_config,
 )
+from podtext.core.processor import (
+    ADVERTISEMENT_MARKER,
+    remove_advertisements,
+)
 from podtext.core.prompts import (
     Prompts,
     PromptsError,
     generate_default_prompts_markdown,
     get_prompts,
     load_prompts,
-)
-from podtext.core.processor import (
-    ADVERTISEMENT_MARKER,
-    remove_advertisements,
 )
 
 __all__ = [
