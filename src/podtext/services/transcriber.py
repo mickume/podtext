@@ -33,6 +33,16 @@ DEFAULT_MODEL = "base"
 # Valid Whisper model names
 VALID_MODELS = {"tiny", "base", "small", "medium", "large"}
 
+# Mapping from simple model names to Hugging Face repo paths
+# The mlx-community models use the format: whisper-{size}.en-mlx
+MODEL_REPO_MAP = {
+    "tiny": "mlx-community/whisper-tiny.en-mlx",
+    "base": "mlx-community/whisper-base.en-mlx",
+    "small": "mlx-community/whisper-small.en-mlx",
+    "medium": "mlx-community/whisper-medium.en-mlx",
+    "large": "mlx-community/whisper-large-v3-mlx",
+}
+
 # Language code for English
 ENGLISH_LANGUAGE_CODE = "en"
 
@@ -213,9 +223,12 @@ def transcribe(
     try:
         # Perform transcription using mlx_whisper
         # The transcribe function returns a dict with 'text', 'segments', 'language'
+        # Get the correct Hugging Face repo path for the model
+        repo_path = MODEL_REPO_MAP.get(model, f"mlx-community/whisper-{model}.en-mlx")
+        
         result = mlx_whisper.transcribe(
             str(audio_path),
-            path_or_hf_repo=f"mlx-community/whisper-{model}",
+            path_or_hf_repo=repo_path,
         )
 
         # Extract full text
