@@ -570,20 +570,25 @@ class TestCLIEpisodesCommand:
     @patch("podtext.cli.main.parse_feed")
     def test_episodes_command_success(self, mock_parse: MagicMock, runner: CliRunner) -> None:
         """Test successful episodes command execution."""
-        mock_parse.return_value = [
-            EpisodeInfo(
-                index=1,
-                title="Episode 1",
-                pub_date=datetime(2024, 1, 15),
-                media_url="https://example.com/ep1.mp3",
-            ),
-            EpisodeInfo(
-                index=2,
-                title="Episode 2",
-                pub_date=datetime(2024, 1, 10),
-                media_url="https://example.com/ep2.mp3",
-            ),
-        ]
+        from podtext.services.rss import FeedInfo
+        
+        mock_parse.return_value = FeedInfo(
+            title="Test Podcast",
+            episodes=[
+                EpisodeInfo(
+                    index=1,
+                    title="Episode 1",
+                    pub_date=datetime(2024, 1, 15),
+                    media_url="https://example.com/ep1.mp3",
+                ),
+                EpisodeInfo(
+                    index=2,
+                    title="Episode 2",
+                    pub_date=datetime(2024, 1, 10),
+                    media_url="https://example.com/ep2.mp3",
+                ),
+            ],
+        )
 
         result = runner.invoke(cli, ["episodes", "https://example.com/feed.xml"])
 
@@ -595,7 +600,9 @@ class TestCLIEpisodesCommand:
     @patch("podtext.cli.main.parse_feed")
     def test_episodes_command_with_limit(self, mock_parse: MagicMock, runner: CliRunner) -> None:
         """Test episodes command with custom limit."""
-        mock_parse.return_value = []
+        from podtext.services.rss import FeedInfo
+        
+        mock_parse.return_value = FeedInfo(title="Test Podcast", episodes=[])
 
         result = runner.invoke(cli, ["episodes", "https://example.com/feed.xml", "--limit", "5"])
 
@@ -615,7 +622,9 @@ class TestCLIEpisodesCommand:
     @patch("podtext.cli.main.parse_feed")
     def test_episodes_command_no_episodes(self, mock_parse: MagicMock, runner: CliRunner) -> None:
         """Test episodes command with no episodes."""
-        mock_parse.return_value = []
+        from podtext.services.rss import FeedInfo
+        
+        mock_parse.return_value = FeedInfo(title="Test Podcast", episodes=[])
 
         result = runner.invoke(cli, ["episodes", "https://example.com/feed.xml"])
 
@@ -642,16 +651,21 @@ class TestCLITranscribeCommand:
         tmp_path: Path,
     ) -> None:
         """Test successful transcribe command execution."""
+        from podtext.services.rss import FeedInfo
+        
         # Setup mocks
         mock_load_config.return_value = sample_config
-        mock_parse.return_value = [
-            EpisodeInfo(
-                index=1,
-                title="Test Episode",
-                pub_date=datetime(2024, 1, 15),
-                media_url="https://example.com/ep1.mp3",
-            ),
-        ]
+        mock_parse.return_value = FeedInfo(
+            title="Test Podcast",
+            episodes=[
+                EpisodeInfo(
+                    index=1,
+                    title="Test Episode",
+                    pub_date=datetime(2024, 1, 15),
+                    media_url="https://example.com/ep1.mp3",
+                ),
+            ],
+        )
 
         # Mock successful pipeline result
         mock_result = MagicMock()
@@ -675,15 +689,20 @@ class TestCLITranscribeCommand:
         sample_config: Config,
     ) -> None:
         """Test transcribe command with invalid episode index."""
+        from podtext.services.rss import FeedInfo
+        
         mock_load_config.return_value = sample_config
-        mock_parse.return_value = [
-            EpisodeInfo(
-                index=1,
-                title="Test Episode",
-                pub_date=datetime(2024, 1, 15),
-                media_url="https://example.com/ep1.mp3",
-            ),
-        ]
+        mock_parse.return_value = FeedInfo(
+            title="Test Podcast",
+            episodes=[
+                EpisodeInfo(
+                    index=1,
+                    title="Test Episode",
+                    pub_date=datetime(2024, 1, 15),
+                    media_url="https://example.com/ep1.mp3",
+                ),
+            ],
+        )
 
         result = runner.invoke(cli, ["transcribe", "https://example.com/feed.xml", "99"])
 
@@ -703,15 +722,20 @@ class TestCLITranscribeCommand:
         sample_config: Config,
     ) -> None:
         """Test transcribe command handles download errors gracefully."""
+        from podtext.services.rss import FeedInfo
+        
         mock_load_config.return_value = sample_config
-        mock_parse.return_value = [
-            EpisodeInfo(
-                index=1,
-                title="Test Episode",
-                pub_date=datetime(2024, 1, 15),
-                media_url="https://example.com/ep1.mp3",
-            ),
-        ]
+        mock_parse.return_value = FeedInfo(
+            title="Test Podcast",
+            episodes=[
+                EpisodeInfo(
+                    index=1,
+                    title="Test Episode",
+                    pub_date=datetime(2024, 1, 15),
+                    media_url="https://example.com/ep1.mp3",
+                ),
+            ],
+        )
         mock_download.side_effect = DownloadError("Connection refused")
 
         result = runner.invoke(cli, ["transcribe", "https://example.com/feed.xml", "1"])
@@ -734,15 +758,20 @@ class TestCLITranscribeCommand:
         tmp_path: Path,
     ) -> None:
         """Test transcribe command handles transcription errors gracefully."""
+        from podtext.services.rss import FeedInfo
+        
         mock_load_config.return_value = sample_config
-        mock_parse.return_value = [
-            EpisodeInfo(
-                index=1,
-                title="Test Episode",
-                pub_date=datetime(2024, 1, 15),
-                media_url="https://example.com/ep1.mp3",
-            ),
-        ]
+        mock_parse.return_value = FeedInfo(
+            title="Test Podcast",
+            episodes=[
+                EpisodeInfo(
+                    index=1,
+                    title="Test Episode",
+                    pub_date=datetime(2024, 1, 15),
+                    media_url="https://example.com/ep1.mp3",
+                ),
+            ],
+        )
 
         media_path = tmp_path / "episode.mp3"
         mock_download.return_value.__enter__ = MagicMock(return_value=media_path)

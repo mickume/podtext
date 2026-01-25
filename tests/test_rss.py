@@ -342,13 +342,17 @@ class TestParseFeed:
 
     def test_parse_zero_limit_returns_empty(self) -> None:
         """Test that zero limit returns empty results."""
+        from podtext.services.rss import FeedInfo
+        
         result = parse_feed("https://example.com/feed.xml", limit=0)
-        assert result == []
+        assert result == FeedInfo(title="", episodes=[])
 
     def test_parse_negative_limit_returns_empty(self) -> None:
         """Test that negative limit returns empty results."""
+        from podtext.services.rss import FeedInfo
+        
         result = parse_feed("https://example.com/feed.xml", limit=-5)
-        assert result == []
+        assert result == FeedInfo(title="", episodes=[])
 
     @patch("podtext.services.rss.httpx.Client")
     @patch("podtext.services.rss.feedparser.parse")
@@ -382,14 +386,16 @@ class TestParseFeed:
         mock_feed.entries = [entry]
         mock_feed.bozo = False
         mock_feed.bozo_exception = None
+        mock_feed.feed.title = "Test Podcast"
         mock_feedparser.return_value = mock_feed
 
         result = parse_feed("https://example.com/feed.xml", limit=10)
 
-        assert len(result) == 1
-        assert result[0].title == "Test Episode"
-        assert result[0].index == 1
-        assert result[0].media_url == "https://example.com/episode.mp3"
+        assert len(result.episodes) == 1
+        assert result.title == "Test Podcast"
+        assert result.episodes[0].title == "Test Episode"
+        assert result.episodes[0].index == 1
+        assert result.episodes[0].media_url == "https://example.com/episode.mp3"
 
     @patch("podtext.services.rss.httpx.Client")
     @patch("podtext.services.rss.feedparser.parse")
@@ -421,10 +427,11 @@ class TestParseFeed:
         mock_feed.entries = entries
         mock_feed.bozo = False
         mock_feed.bozo_exception = None
+        mock_feed.feed.title = "Test Podcast"
         mock_feedparser.return_value = mock_feed
 
         result = parse_feed("https://example.com/feed.xml", limit=5)
-        assert len(result) == 5
+        assert len(result.episodes) == 5
 
     @patch("podtext.services.rss.httpx.Client")
     @patch("podtext.services.rss.feedparser.parse")
@@ -633,9 +640,10 @@ class TestParseFeedErrorHandling:
         mock_feed.entries = [entry]
         mock_feed.bozo = True  # Malformed but has entries
         mock_feed.bozo_exception = Exception("Minor XML issue")
+        mock_feed.feed.title = "Test Podcast"
         mock_feedparser.return_value = mock_feed
 
         # Should not raise, should return episodes
         result = parse_feed("https://example.com/feed.xml")
-        assert len(result) == 1
-        assert result[0].title == "Test Episode"
+        assert len(result.episodes) == 1
+        assert result.episodes[0].title == "Test Episode"

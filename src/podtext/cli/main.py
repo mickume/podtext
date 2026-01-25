@@ -19,6 +19,7 @@ from podtext.services.itunes import (
 )
 from podtext.services.rss import (
     EpisodeInfo,
+    FeedInfo,
     RSSFeedError,
     parse_feed,
 )
@@ -126,11 +127,13 @@ def process_batch(
             for idx in unique_indices
         ]
 
-    # Parse feed once to get all episodes
+    # Parse feed once to get all episodes and podcast name
     try:
         # Get enough episodes to cover the maximum index
         max_index = max(unique_indices) if unique_indices else 1
-        episode_list = parse_feed(feed_url, limit=max_index + 10)
+        feed_info = parse_feed(feed_url, limit=max_index + 10)
+        episode_list = feed_info.episodes
+        podcast_name = feed_info.title
     except RSSFeedError as e:
         # Fatal error - cannot proceed without feed
         click.echo(f"Feed error: {e}", err=True)
@@ -170,11 +173,12 @@ def process_batch(
             click.echo()
             continue
 
-        # Process the episode using the pipeline
+        # Process the episode using the pipeline with podcast name
         pipeline_result = run_pipeline_safe(
             episode=episode,
             config=config,
             skip_language_check=skip_language_check,
+            podcast_name=podcast_name,
         )
 
         if pipeline_result is not None:
@@ -335,8 +339,8 @@ def episodes(feed_url: str, limit: int) -> None:
     Validates: Requirements 2.2, 2.3, 2.4, 2.5
     """
     try:
-        episode_list = parse_feed(feed_url, limit=limit)
-        output = format_episode_results(episode_list)
+        feed_info = parse_feed(feed_url, limit=limit)
+        output = format_episode_results(feed_info.episodes)
         click.echo(output)
     except RSSFeedError as e:
         # Display error message and exit gracefully (Requirement 2.5)

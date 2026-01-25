@@ -47,6 +47,19 @@ class EpisodeInfo:
     feed_url: str | None = None
 
 
+@dataclass
+class FeedInfo:
+    """Represents podcast feed information.
+
+    Attributes:
+        title: The title/name of the podcast.
+        episodes: List of episodes from the feed.
+    """
+
+    title: str
+    episodes: list[EpisodeInfo]
+
+
 def _parse_pub_date(date_str: str | None) -> datetime:
     """Parse a publication date string from RSS feed.
 
@@ -205,7 +218,7 @@ def parse_feed(
     feed_url: str,
     limit: int = 10,
     timeout: float = DEFAULT_TIMEOUT,
-) -> list[EpisodeInfo]:
+) -> FeedInfo:
     """Parse a podcast RSS feed and extract episode information.
 
     Retrieves the RSS feed from the given URL and extracts episode information
@@ -218,7 +231,7 @@ def parse_feed(
         timeout: Request timeout in seconds (default: 30.0).
 
     Returns:
-        List of EpisodeInfo objects containing episode details.
+        FeedInfo object containing podcast title and list of episodes.
 
     Raises:
         RSSFeedError: If the feed is invalid, unreachable, or cannot be parsed.
@@ -226,8 +239,9 @@ def parse_feed(
     Validates: Requirements 2.1, 2.5
 
     Example:
-        >>> episodes = parse_feed("https://example.com/podcast/feed.xml", limit=5)
-        >>> for ep in episodes:
+        >>> feed_info = parse_feed("https://example.com/podcast/feed.xml", limit=5)
+        >>> print(f"Podcast: {feed_info.title}")
+        >>> for ep in feed_info.episodes:
         ...     print(f"{ep.index}. {ep.title} ({ep.pub_date.date()})")
     """
     if not feed_url or not feed_url.strip():
@@ -235,7 +249,7 @@ def parse_feed(
 
     # Ensure limit is positive
     if limit <= 0:
-        return []
+        return FeedInfo(title="", episodes=[])
 
     feed_url = feed_url.strip()
 
@@ -275,4 +289,11 @@ def parse_feed(
     if not feed.entries:
         raise RSSFeedError("RSS feed contains no episodes")
 
-    return _parse_feed_entries(feed, limit, feed_url)
+    # Extract podcast title from feed metadata
+    podcast_title = ""
+    if hasattr(feed, "feed"):
+        podcast_title = getattr(feed.feed, "title", "")
+
+    episodes = _parse_feed_entries(feed, limit, feed_url)
+
+    return FeedInfo(title=podcast_title, episodes=episodes)

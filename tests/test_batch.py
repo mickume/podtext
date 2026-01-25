@@ -514,6 +514,7 @@ class TestProcessBatch:
         from unittest.mock import MagicMock, patch
 
         from podtext.cli.main import process_batch
+        from podtext.services.rss import FeedInfo
 
         # Mock the dependencies at their original module locations
         with patch("podtext.core.config.load_config") as mock_load_config, \
@@ -530,7 +531,10 @@ class TestProcessBatch:
             mock_episode_2 = MagicMock()
             mock_episode_2.index = 2
 
-            mock_parse_feed.return_value = [mock_episode_1, mock_episode_2]
+            mock_parse_feed.return_value = FeedInfo(
+                title="Test Podcast",
+                episodes=[mock_episode_1, mock_episode_2],
+            )
 
             # Mock successful pipeline results
             mock_result_1 = MagicMock()
@@ -570,6 +574,7 @@ class TestProcessBatch:
         from unittest.mock import MagicMock, patch
 
         from podtext.cli.main import process_batch
+        from podtext.services.rss import FeedInfo
 
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
@@ -581,7 +586,10 @@ class TestProcessBatch:
 
             mock_episode = MagicMock()
             mock_episode.index = 1
-            mock_parse_feed.return_value = [mock_episode]
+            mock_parse_feed.return_value = FeedInfo(
+                title="Test Podcast",
+                episodes=[mock_episode],
+            )
 
             mock_result = MagicMock()
             mock_result.output_path = "/path/to/episode.md"
@@ -611,6 +619,7 @@ class TestProcessBatch:
         from unittest.mock import MagicMock, patch
 
         from podtext.cli.main import process_batch
+        from podtext.services.rss import FeedInfo
 
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
@@ -623,7 +632,10 @@ class TestProcessBatch:
             # Only episode 1 exists in feed
             mock_episode = MagicMock()
             mock_episode.index = 1
-            mock_parse_feed.return_value = [mock_episode]
+            mock_parse_feed.return_value = FeedInfo(
+                title="Test Podcast",
+                episodes=[mock_episode],
+            )
 
             mock_result = MagicMock()
             mock_result.output_path = "/path/to/episode1.md"
@@ -661,6 +673,7 @@ class TestProcessBatch:
         from unittest.mock import MagicMock, patch
 
         from podtext.cli.main import process_batch
+        from podtext.services.rss import FeedInfo
 
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
@@ -676,7 +689,10 @@ class TestProcessBatch:
             mock_episode_2 = MagicMock()
             mock_episode_2.index = 2
 
-            mock_parse_feed.return_value = [mock_episode_1, mock_episode_2]
+            mock_parse_feed.return_value = FeedInfo(
+                title="Test Podcast",
+                episodes=[mock_episode_1, mock_episode_2],
+            )
 
             # First episode fails, second succeeds
             mock_result_2 = MagicMock()
