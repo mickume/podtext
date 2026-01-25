@@ -21,7 +21,7 @@ class ClaudeClient:
     """Client for interacting with Claude API."""
 
     api_key: str
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "claude-sonnet-4-5"
     _client: anthropic.Anthropic | None = None
     _prompts: Prompts | None = None
 
