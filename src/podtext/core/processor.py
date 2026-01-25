@@ -1,15 +1,114 @@
 """Text processor for Podtext.
 
-Handles post-processing of transcribed text including advertisement removal.
+Handles post-processing of transcribed text including advertisement removal
+and path sanitization for file naming.
 
 Requirements: 6.2, 6.3
 """
 
 from __future__ import annotations
 
+import re
+
 
 # Marker text inserted where advertisements are removed
 ADVERTISEMENT_MARKER = "ADVERTISEMENT WAS REMOVED"
+
+# Characters invalid in file paths (covers Windows, macOS, Linux)
+INVALID_PATH_CHARS = re.compile(r'[/\\:*?"<>|]')
+
+
+def sanitize_path_component(
+    name: str,
+    max_length: int = 30,
+    fallback: str = "unknown",
+) -> str:
+    """Sanitize a string for use as a file system path component.
+    
+    Processes the input string to make it safe for use as a directory name
+    or filename by:
+    1. Replacing invalid characters with underscores
+    2. Collapsing consecutive underscores
+    3. Trimming whitespace and underscores
+    4. Truncating to max_length, preferring word boundaries
+    5. Returning fallback if result would be empty
+    
+    Args:
+        name: The string to sanitize (podcast name or episode title).
+        max_length: Maximum length of the result (default: 30).
+        fallback: Value to return if sanitization results in empty string.
+        
+    Returns:
+        A sanitized string safe for use in file paths.
+        
+    Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 4.3
+    
+    Example:
+        >>> sanitize_path_component("Episode: The Beginning")
+        'Episode_ The Beginning'
+        >>> sanitize_path_component("A/B Testing")
+        'A_B Testing'
+        >>> sanitize_path_component("")
+        'unknown'
+        >>> sanitize_path_component("This is a very long episode title that exceeds the limit")
+        'This is a very long episode'
+    """
+    if not name:
+        return fallback
+    
+    # Replace invalid characters with underscores
+    result = INVALID_PATH_CHARS.sub("_", name)
+    
+    # Collapse consecutive underscores into single underscore
+    result = re.sub(r"_+", "_", result)
+    
+    # Trim leading/trailing whitespace and underscores
+    result = result.strip().strip("_").strip()
+    
+    # If empty after processing, return fallback
+    if not result:
+        return fallback
+    
+    # Truncate to max_length, preferring word boundaries
+    if len(result) > max_length:
+        result = _truncate_at_word_boundary(result, max_length)
+    
+    # Final trim of any trailing whitespace or underscores from truncation
+    result = result.strip().rstrip("_").strip()
+    
+    # If empty after truncation, return fallback
+    if not result:
+        return fallback
+    
+    return result
+
+
+def _truncate_at_word_boundary(text: str, max_length: int) -> str:
+    """Truncate text at a word boundary if possible.
+    
+    Attempts to truncate at the last space before max_length.
+    If no space is found, truncates at max_length.
+    
+    Args:
+        text: The text to truncate.
+        max_length: Maximum length of the result.
+        
+    Returns:
+        Truncated text.
+    """
+    if len(text) <= max_length:
+        return text
+    
+    # Find the last space before max_length
+    truncated = text[:max_length]
+    last_space = truncated.rfind(" ")
+    
+    # If we found a space and it's not too early in the string
+    # (keep at least 10 chars to avoid overly short results)
+    if last_space > 10:
+        return truncated[:last_space]
+    
+    return truncated
 
 
 def _normalize_ad_blocks(

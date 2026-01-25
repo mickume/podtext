@@ -36,6 +36,7 @@ class EpisodeInfo:
         pub_date: The publication date of the episode.
         media_url: The URL to the episode's media file (audio/video).
         show_notes: Show notes content from the RSS feed (may contain HTML).
+        feed_url: The RSS feed URL from which this episode was discovered (optional).
     """
     
     index: int
@@ -43,6 +44,7 @@ class EpisodeInfo:
     pub_date: datetime
     media_url: str
     show_notes: str = ""
+    feed_url: str | None = None
 
 
 def _parse_pub_date(date_str: str | None) -> datetime:
@@ -147,12 +149,14 @@ def _extract_show_notes(entry: Any) -> str:
 def _parse_feed_entries(
     feed: Any,
     limit: int,
+    feed_url: str = "",
 ) -> list[EpisodeInfo]:
     """Parse feed entries into EpisodeInfo objects.
     
     Args:
         feed: A feedparser parsed feed object.
         limit: Maximum number of episodes to return.
+        feed_url: The RSS feed URL to include in each episode.
         
     Returns:
         List of EpisodeInfo objects, sorted by publication date (most recent first).
@@ -183,6 +187,7 @@ def _parse_feed_entries(
                 pub_date=pub_date,
                 media_url=str(media_url),
                 show_notes=show_notes,
+                feed_url=feed_url if feed_url else None,
             )
         )
     
@@ -276,4 +281,4 @@ def parse_feed(
     if not feed.entries:
         raise RSSFeedError("RSS feed contains no episodes")
     
-    return _parse_feed_entries(feed, limit)
+    return _parse_feed_entries(feed, limit, feed_url)
