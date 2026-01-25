@@ -48,3 +48,4 @@ Format your response as a JSON array of strings:
 ["keyword1", "keyword2", ...]
 
 Transcript:
+
