@@ -3,6 +3,7 @@ transcripts.md
 transcripts/** 
 .podtext/output/**
 mcp.json
+stuff/** 
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
