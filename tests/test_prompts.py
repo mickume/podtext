@@ -173,10 +173,10 @@ class TestLoadPrompts:
     Validates: Requirements 9.1, 9.2, 9.3
     """
 
-    def test_load_prompts_no_file_uses_defaults(
-        self, temp_prompts_dir: Path, capsys: pytest.CaptureFixture[str]
+    def test_load_prompts_no_file_creates_default_in_global(
+        self, temp_prompts_dir: Path
     ) -> None:
-        """Test that missing prompts file falls back to defaults.
+        """Test that missing prompts file creates default in global location when local .podtext doesn't exist.
 
         Validates: Requirements 9.3
         """
@@ -193,15 +193,47 @@ class TestLoadPrompts:
         assert prompts.advertisement_detection == DEFAULT_ADVERTISEMENT_DETECTION_PROMPT
         assert prompts.content_summary == DEFAULT_CONTENT_SUMMARY_PROMPT
 
-        # Should display warning
-        captured = capsys.readouterr()
-        assert "Warning" in captured.err
-        assert "not found" in captured.err
+        # Should create the global prompts file (since local .podtext doesn't exist)
+        assert global_path.exists()
+        assert not local_path.exists()
+        content = global_path.read_text(encoding='utf-8')
+        assert "# Advertisement Detection" in content
+        assert "# Content Summary" in content
 
-    def test_load_prompts_no_warning_when_disabled(
+    def test_load_prompts_no_file_creates_default_in_local_when_exists(
+        self, temp_prompts_dir: Path
+    ) -> None:
+        """Test that missing prompts file creates default in local location when .podtext exists.
+
+        Validates: Requirements 9.3
+        """
+        local_path = temp_prompts_dir / "local" / "prompts.md"
+        global_path = temp_prompts_dir / "global" / "prompts.md"
+        
+        # Create the local .podtext directory
+        local_path.parent.mkdir(parents=True)
+
+        prompts = load_prompts(
+            local_path=local_path,
+            global_path=global_path,
+            warn_on_fallback=True,
+        )
+
+        # Should use defaults
+        assert prompts.advertisement_detection == DEFAULT_ADVERTISEMENT_DETECTION_PROMPT
+        assert prompts.content_summary == DEFAULT_CONTENT_SUMMARY_PROMPT
+
+        # Should create the local prompts file (since local .podtext exists)
+        assert local_path.exists()
+        assert not global_path.exists()
+        content = local_path.read_text(encoding='utf-8')
+        assert "# Advertisement Detection" in content
+        assert "# Content Summary" in content
+
+    def test_load_prompts_no_file_no_warning(
         self, temp_prompts_dir: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Test that warning can be disabled."""
+        """Test that no warning is displayed when file is auto-created."""
         local_path = temp_prompts_dir / "local" / "prompts.md"
         global_path = temp_prompts_dir / "global" / "prompts.md"
 
@@ -211,7 +243,7 @@ class TestLoadPrompts:
             warn_on_fallback=False,
         )
 
-        # Should not display warning
+        # Should not display warning (file is auto-created now)
         captured = capsys.readouterr()
         assert captured.err == ""
 

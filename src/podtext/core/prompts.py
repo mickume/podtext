@@ -182,13 +182,18 @@ def load_prompts(
     elif global_path.exists():
         prompts_path = global_path
     
-    # If no prompts file found, use defaults
+    # If no prompts file found, create default file and use defaults
     if prompts_path is None:
-        if warn_on_fallback:
-            _display_warning(
-                "Prompts file not found. Using built-in default prompts. "
-                f"Create {local_path} or {global_path} to customize prompts."
-            )
+        try:
+            # Create in local .podtext if it exists, otherwise use global
+            if local_path.parent.exists():
+                target_path = local_path
+            else:
+                target_path = global_path
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.write_text(generate_default_prompts_markdown(), encoding='utf-8')
+        except OSError:
+            pass  # Silently ignore if we can't create the file
         return Prompts.defaults()
     
     # Try to load and parse the prompts file
