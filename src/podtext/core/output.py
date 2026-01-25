@@ -18,7 +18,11 @@ if TYPE_CHECKING:
     from podtext.services.transcriber import TranscriptionResult
     from podtext.services.claude import AnalysisResult
 
-from podtext.core.processor import remove_advertisements
+from podtext.core.processor import remove_advertisements, convert_html_to_markdown
+
+
+# Maximum length for show notes before truncation
+MAX_SHOW_NOTES_LENGTH = 50000
 
 
 def _format_frontmatter(
@@ -81,19 +85,22 @@ def _format_frontmatter(
 def _format_content(
     transcription: "TranscriptionResult",
     ad_markers: list[tuple[int, int]],
+    show_notes: str = "",
 ) -> str:
-    """Format transcription content with paragraph breaks and ad markers.
+    """Format transcription content with paragraph breaks, ad markers, and show notes.
     
     Processes the transcription text to:
     1. Remove detected advertisements and insert markers
     2. Format paragraphs with proper spacing
+    3. Append show notes section if available
     
     Args:
         transcription: Transcription result with text and paragraphs.
         ad_markers: List of (start, end) positions for advertisements.
+        show_notes: Optional show notes content to append.
         
     Returns:
-        Formatted content string with paragraphs and ad markers.
+        Formatted content string with paragraphs, ad markers, and show notes.
         
     Validates: Requirements 4.4, 7.5
     """
@@ -103,14 +110,57 @@ def _format_content(
         if ad_markers:
             # For ad markers, we need to work with the full text
             processed_text = remove_advertisements(transcription.text, ad_markers)
-            return _add_paragraph_breaks(processed_text)
+            content = _add_paragraph_breaks(processed_text)
         else:
             # Use original paragraphs with double newlines for readability
-            return "\n\n".join(transcription.paragraphs)
+            content = "\n\n".join(transcription.paragraphs)
+    else:
+        # No paragraphs available, process the raw text
+        processed_text = remove_advertisements(transcription.text, ad_markers)
+        content = _add_paragraph_breaks(processed_text)
     
-    # No paragraphs available, process the raw text
-    processed_text = remove_advertisements(transcription.text, ad_markers)
-    return _add_paragraph_breaks(processed_text)
+    # Append show notes if available
+    formatted_show_notes = _format_show_notes(show_notes)
+    if formatted_show_notes:
+        content = f"{content}\n\n{formatted_show_notes}"
+    
+    return content
+
+
+def _format_show_notes(show_notes: str, max_length: int = MAX_SHOW_NOTES_LENGTH) -> str:
+    """Format show notes for markdown output.
+    
+    Converts HTML show notes to markdown and adds a section heading.
+    Truncates if content exceeds max_length.
+    
+    Args:
+        show_notes: Raw show notes content (may be HTML).
+        max_length: Maximum character length before truncation.
+        
+    Returns:
+        Formatted show notes section, or empty string if no notes.
+        
+    Validates: Requirements 2.1, 2.2, 2.3, 4.2
+    """
+    if not show_notes or not show_notes.strip():
+        return ""
+    
+    # Convert HTML to markdown
+    markdown_content = convert_html_to_markdown(show_notes)
+    
+    if not markdown_content or not markdown_content.strip():
+        return ""
+    
+    # Truncate if too long
+    if len(markdown_content) > max_length:
+        markdown_content = markdown_content[:max_length]
+        # Try to truncate at a word boundary
+        last_space = markdown_content.rfind(" ")
+        if last_space > max_length - 100:
+            markdown_content = markdown_content[:last_space]
+        markdown_content += "\n\n*[Show notes truncated due to length]*"
+    
+    return f"## Show Notes\n\n{markdown_content}"
 
 
 def _add_paragraph_breaks(text: str) -> str:
@@ -237,8 +287,12 @@ def generate_markdown(
     # Generate frontmatter
     frontmatter = _format_frontmatter(episode, analysis, podcast_name)
     
-    # Format content with ad removal
-    content = _format_content(transcription, analysis.ad_markers)
+    # Format content with ad removal and show notes
+    content = _format_content(
+        transcription,
+        analysis.ad_markers,
+        show_notes=episode.show_notes,
+    )
     
     # Combine frontmatter and content
     markdown_output = f"{frontmatter}\n{content}\n"
@@ -275,8 +329,12 @@ def generate_markdown_string(
     # Generate frontmatter
     frontmatter = _format_frontmatter(episode, analysis, podcast_name)
     
-    # Format content with ad removal
-    content = _format_content(transcription, analysis.ad_markers)
+    # Format content with ad removal and show notes
+    content = _format_content(
+        transcription,
+        analysis.ad_markers,
+        show_notes=episode.show_notes,
+    )
     
     # Combine frontmatter and content
     return f"{frontmatter}\n{content}\n"

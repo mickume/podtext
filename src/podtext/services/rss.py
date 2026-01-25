@@ -35,12 +35,14 @@ class EpisodeInfo:
         title: The title of the episode.
         pub_date: The publication date of the episode.
         media_url: The URL to the episode's media file (audio/video).
+        show_notes: Show notes content from the RSS feed (may contain HTML).
     """
     
     index: int
     title: str
     pub_date: datetime
     media_url: str
+    show_notes: str = ""
 
 
 def _parse_pub_date(date_str: str | None) -> datetime:
@@ -104,6 +106,44 @@ def _extract_media_url(entry: Any) -> str | None:
     return None
 
 
+def _extract_show_notes(entry: Any) -> str:
+    """Extract show notes from an RSS feed entry.
+    
+    Checks fields in priority order: content, summary, description.
+    
+    Args:
+        entry: A feedparser entry object.
+        
+    Returns:
+        Show notes content as string, or empty string if not found.
+        
+    Validates: Requirements 1.1, 1.2, 1.3
+    """
+    try:
+        # Priority 1: content field (often contains full HTML show notes)
+        content = getattr(entry, "content", None)
+        if content and isinstance(content, list) and len(content) > 0:
+            value = content[0].get("value", "")
+            if value and value.strip():
+                return str(value)
+        
+        # Priority 2: summary field
+        summary = getattr(entry, "summary", None)
+        if summary and str(summary).strip():
+            return str(summary)
+        
+        # Priority 3: description field
+        description = getattr(entry, "description", None)
+        if description and str(description).strip():
+            return str(description)
+        
+    except Exception:
+        # Log warning and continue with empty show notes
+        pass
+    
+    return ""
+
+
 def _parse_feed_entries(
     feed: Any,
     limit: int,
@@ -133,12 +173,16 @@ def _parse_feed_entries(
         pub_date_str = getattr(entry, "published", None) or getattr(entry, "updated", None)
         pub_date = _parse_pub_date(pub_date_str)
         
+        # Extract show notes
+        show_notes = _extract_show_notes(entry)
+        
         episodes.append(
             EpisodeInfo(
                 index=0,  # Will be assigned after sorting
                 title=str(title),
                 pub_date=pub_date,
                 media_url=str(media_url),
+                show_notes=show_notes,
             )
         )
     

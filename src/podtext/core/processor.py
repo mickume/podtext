@@ -143,3 +143,151 @@ def remove_advertisements(
         result_parts.append(text[current_pos:])
     
     return "".join(result_parts)
+
+
+from html.parser import HTMLParser
+from typing import Any
+
+
+class _HTMLToMarkdownParser(HTMLParser):
+    """HTML parser that converts HTML to markdown format.
+    
+    Handles common HTML elements found in podcast show notes.
+    """
+    
+    def __init__(self) -> None:
+        super().__init__()
+        self.result: list[str] = []
+        self.current_link_url: str | None = None
+        self.current_link_text: list[str] = []
+        self.in_link = False
+        self.list_stack: list[str] = []  # Track nested lists ('ul' or 'ol')
+        self.list_item_count: list[int] = []  # Track item numbers for ol
+        
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        tag = tag.lower()
+        
+        if tag == "a":
+            self.in_link = True
+            self.current_link_text = []
+            # Find href attribute
+            for attr_name, attr_value in attrs:
+                if attr_name == "href" and attr_value:
+                    self.current_link_url = attr_value
+                    break
+        elif tag == "p":
+            if self.result and not self.result[-1].endswith("\n\n"):
+                self.result.append("\n\n")
+        elif tag == "br":
+            self.result.append("\n")
+        elif tag in ("strong", "b"):
+            self.result.append("**")
+        elif tag in ("em", "i"):
+            self.result.append("*")
+        elif tag == "code":
+            self.result.append("`")
+        elif tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            level = int(tag[1])
+            if self.result and not self.result[-1].endswith("\n"):
+                self.result.append("\n")
+            self.result.append("#" * level + " ")
+        elif tag == "ul":
+            self.list_stack.append("ul")
+            self.list_item_count.append(0)
+        elif tag == "ol":
+            self.list_stack.append("ol")
+            self.list_item_count.append(0)
+        elif tag == "li":
+            if self.result and not self.result[-1].endswith("\n"):
+                self.result.append("\n")
+            indent = "  " * (len(self.list_stack) - 1)
+            if self.list_stack and self.list_stack[-1] == "ol":
+                self.list_item_count[-1] += 1
+                self.result.append(f"{indent}{self.list_item_count[-1]}. ")
+            else:
+                self.result.append(f"{indent}- ")
+    
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.lower()
+        
+        if tag == "a":
+            if self.in_link and self.current_link_url:
+                link_text = "".join(self.current_link_text).strip()
+                if link_text:
+                    self.result.append(f"[{link_text}]({self.current_link_url})")
+                else:
+                    self.result.append(self.current_link_url)
+            self.in_link = False
+            self.current_link_url = None
+            self.current_link_text = []
+        elif tag == "p":
+            self.result.append("\n\n")
+        elif tag in ("strong", "b"):
+            self.result.append("**")
+        elif tag in ("em", "i"):
+            self.result.append("*")
+        elif tag == "code":
+            self.result.append("`")
+        elif tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            self.result.append("\n\n")
+        elif tag in ("ul", "ol"):
+            if self.list_stack:
+                self.list_stack.pop()
+            if self.list_item_count:
+                self.list_item_count.pop()
+            if not self.list_stack:
+                self.result.append("\n")
+        elif tag == "li":
+            pass  # Newline handled by next li or end of list
+    
+    def handle_data(self, data: str) -> None:
+        if self.in_link:
+            self.current_link_text.append(data)
+        else:
+            self.result.append(data)
+    
+    def get_result(self) -> str:
+        return "".join(self.result)
+
+
+def convert_html_to_markdown(html_content: str) -> str:
+    """Convert HTML content to markdown format.
+    
+    Handles common HTML elements found in podcast show notes:
+    - Links (<a>) → [text](url)
+    - Lists (<ul>, <ol>, <li>) → markdown lists
+    - Headings (<h1>-<h6>) → # headings
+    - Paragraphs (<p>) → double newlines
+    - Bold/italic → **bold**, *italic*
+    - Strips unsupported tags, preserves text
+    
+    Args:
+        html_content: HTML string to convert.
+        
+    Returns:
+        Markdown-formatted string.
+        
+    Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.1
+    """
+    if not html_content:
+        return ""
+    
+    # Check if content appears to be plain text (no HTML tags)
+    if "<" not in html_content:
+        return html_content
+    
+    try:
+        parser = _HTMLToMarkdownParser()
+        parser.feed(html_content)
+        result = parser.get_result()
+        
+        # Clean up excessive whitespace
+        import re
+        result = re.sub(r"\n{3,}", "\n\n", result)
+        result = result.strip()
+        
+        return result
+    except Exception:
+        # On any parsing error, return the original content stripped of tags
+        import re
+        return re.sub(r"<[^>]+>", "", html_content).strip()
