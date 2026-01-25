@@ -32,6 +32,8 @@ def _format_frontmatter(
     - title: Episode title
     - pub_date: Publication date in ISO format
     - podcast: Podcast name (if provided)
+    - feed_url: RSS feed URL (if available)
+    - media_url: Episode media file URL
     - summary: AI-generated summary
     - topics: List of topics covered
     - keywords: List of relevant keywords
@@ -54,6 +56,13 @@ def _format_frontmatter(
     # Add podcast name if provided
     if podcast_name:
         frontmatter_data["podcast"] = podcast_name
+    
+    # Add feed_url if available (Requirement: enhanced-metadata 1.1, 1.2)
+    if episode.feed_url:
+        frontmatter_data["feed_url"] = episode.feed_url
+    
+    # Add media_url (always present, Requirement: enhanced-metadata 2.1, 2.2)
+    frontmatter_data["media_url"] = episode.media_url
     
     # Add analysis results (Requirements 7.2, 7.3, 7.4, 7.6)
     if analysis.summary:
