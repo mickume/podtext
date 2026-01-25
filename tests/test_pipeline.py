@@ -20,7 +20,7 @@ from podtext.core.pipeline import (
     PipelineWarning,
     TranscriptionPipeline,
     TranscriptionPipelineError,
-    _generate_output_filename,
+    _generate_output_path,
     run_pipeline,
     run_pipeline_safe,
 )
@@ -75,16 +75,18 @@ def sample_config(tmp_path: Path) -> Config:
     )
 
 
-class TestGenerateOutputFilename:
-    """Tests for _generate_output_filename function."""
+class TestGenerateOutputPath:
+    """Tests for _generate_output_path function."""
 
-    def test_generates_filename_with_date_prefix(self, sample_episode: EpisodeInfo) -> None:
-        """Test that filename includes date prefix."""
-        filename = _generate_output_filename(sample_episode)
-        assert filename.startswith("2024-01-15_")
-        assert filename.endswith(".md")
+    def test_generates_path_with_podcast_subdirectory(
+        self, sample_episode: EpisodeInfo, tmp_path: Path
+    ) -> None:
+        """Test that path includes podcast subdirectory."""
+        path = _generate_output_path(sample_episode, "My Podcast", tmp_path)
+        assert path.parent.name == "My Podcast"
+        assert path.suffix == ".md"
 
-    def test_sanitizes_special_characters(self) -> None:
+    def test_sanitizes_special_characters(self, tmp_path: Path) -> None:
         """Test that special characters are sanitized."""
         episode = EpisodeInfo(
             index=1,
@@ -92,34 +94,56 @@ class TestGenerateOutputFilename:
             pub_date=datetime(2024, 1, 15),
             media_url="https://example.com/ep.mp3",
         )
-        filename = _generate_output_filename(episode)
-        assert "/" not in filename
-        assert "\\" not in filename
-        assert "*" not in filename
-        assert "?" not in filename
+        path = _generate_output_path(episode, "Podcast/Name:Test", tmp_path)
+        
+        # Check podcast directory name is sanitized
+        assert "/" not in path.parent.name
+        assert "\\" not in path.parent.name
+        assert ":" not in path.parent.name
+        
+        # Check filename is sanitized
+        assert "/" not in path.name
+        assert "\\" not in path.name
+        assert "*" not in path.name
+        assert "?" not in path.name
 
-    def test_truncates_long_titles(self) -> None:
-        """Test that very long titles are truncated."""
+    def test_truncates_long_names(self, tmp_path: Path) -> None:
+        """Test that very long names are truncated to 30 chars."""
         episode = EpisodeInfo(
             index=1,
             title="A" * 200,  # Very long title
             pub_date=datetime(2024, 1, 15),
             media_url="https://example.com/ep.mp3",
         )
-        filename = _generate_output_filename(episode)
-        # Date prefix (10) + underscore (1) + truncated title (100) + .md (3) = 114 max
-        assert len(filename) <= 120
+        path = _generate_output_path(episode, "B" * 200, tmp_path)
+        
+        # Podcast directory name should be max 30 chars
+        assert len(path.parent.name) <= 30
+        # Filename (without .md) should be max 30 chars
+        assert len(path.stem) <= 30
 
-    def test_handles_empty_title(self) -> None:
-        """Test fallback for empty title."""
+    def test_handles_empty_podcast_name(self, sample_episode: EpisodeInfo, tmp_path: Path) -> None:
+        """Test fallback for empty podcast name."""
+        path = _generate_output_path(sample_episode, "", tmp_path)
+        assert path.parent.name == "unknown-podcast"
+
+    def test_handles_empty_episode_title(self, tmp_path: Path) -> None:
+        """Test fallback for empty episode title."""
         episode = EpisodeInfo(
             index=5,
             title="",
             pub_date=datetime(2024, 1, 15),
             media_url="https://example.com/ep.mp3",
         )
-        filename = _generate_output_filename(episode)
-        assert "episode_5" in filename
+        path = _generate_output_path(episode, "My Podcast", tmp_path)
+        assert path.stem == "episode_5"
+
+    def test_custom_output_path_overrides(
+        self, sample_episode: EpisodeInfo, tmp_path: Path
+    ) -> None:
+        """Test that custom output_path in run_pipeline overrides generated path."""
+        # This is tested in TestRunPipeline.test_custom_output_path
+        pass
 
 
 class TestRunPipeline:
