@@ -629,20 +629,14 @@ class TestCLITranscribeCommand:
     Validates: Requirement 10.4
     """
 
-    @patch("podtext.core.output.generate_markdown")
-    @patch("podtext.services.claude.analyze_content")
-    @patch("podtext.services.transcriber.transcribe")
-    @patch("podtext.services.downloader.download_with_optional_cleanup")
-    @patch("podtext.cli.main.parse_feed")
+    @patch("podtext.core.pipeline.run_pipeline_safe")
+    @patch("podtext.services.rss.parse_feed")
     @patch("podtext.core.config.load_config")
     def test_transcribe_command_success(
         self,
         mock_load_config: MagicMock,
         mock_parse: MagicMock,
-        mock_download: MagicMock,
-        mock_transcribe: MagicMock,
-        mock_analyze: MagicMock,
-        mock_generate: MagicMock,
+        mock_pipeline: MagicMock,
         runner: CliRunner,
         sample_config: Config,
         tmp_path: Path,
@@ -659,25 +653,19 @@ class TestCLITranscribeCommand:
             ),
         ]
 
-        media_path = tmp_path / "episode.mp3"
-        mock_download.return_value.__enter__ = MagicMock(return_value=media_path)
-        mock_download.return_value.__exit__ = MagicMock(return_value=False)
-
-        mock_transcribe.return_value = TranscriptionResult(
-            text="Test transcription",
-            paragraphs=["Test transcription"],
-            language="en",
-        )
-        mock_analyze.return_value = AnalysisResult()
+        # Mock successful pipeline result
+        mock_result = MagicMock()
+        mock_result.output_path = tmp_path / "episode-1.md"
+        mock_pipeline.return_value = mock_result
 
         result = runner.invoke(cli, ["transcribe", "https://example.com/feed.xml", "1"])
 
         assert result.exit_code == 0
-        assert "Transcribing" in result.output
-        mock_transcribe.assert_called_once()
-        mock_generate.assert_called_once()
+        assert "Processing 1 episode from feed" in result.output
+        assert "✓ Episode 1 transcribed successfully" in result.output
+        mock_pipeline.assert_called_once()
 
-    @patch("podtext.cli.main.parse_feed")
+    @patch("podtext.services.rss.parse_feed")
     @patch("podtext.core.config.load_config")
     def test_transcribe_command_episode_not_found(
         self,
@@ -700,7 +688,8 @@ class TestCLITranscribeCommand:
         result = runner.invoke(cli, ["transcribe", "https://example.com/feed.xml", "99"])
 
         assert result.exit_code == 1
-        assert "not found" in result.output.lower()
+        # With batch processing, episode not found shows specific error message
+        assert ("Episode 99 not found" in result.output or "not found" in result.output.lower())
 
     @patch("podtext.services.downloader.download_with_optional_cleanup")
     @patch("podtext.cli.main.parse_feed")

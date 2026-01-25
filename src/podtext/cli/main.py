@@ -8,6 +8,7 @@ Requirements: 1.2, 1.3, 1.4, 2.2, 2.3, 2.4
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass
 
 import click
 
@@ -21,6 +22,221 @@ from podtext.services.rss import (
     RSSFeedError,
     parse_feed,
 )
+
+
+@dataclass
+class BatchResult:
+    """Result of processing a single episode in a batch.
+
+    Tracks the outcome of processing each episode during batch transcription,
+    including success status, output file location, and error information.
+
+    Attributes:
+        index: Episode index that was processed (1-based).
+        success: Whether processing succeeded.
+        output_path: Path to output file if successful, None otherwise.
+        error_message: Error description if failed, None otherwise.
+
+    Validates: Requirements 3.3, 5.4
+    """
+
+    index: int
+    success: bool
+    output_path: str | None
+    error_message: str | None
+
+
+def deduplicate_indices(indices: tuple[int, ...]) -> list[int]:
+    """Remove duplicate indices while preserving first occurrence order.
+
+    When multiple indices are provided for batch processing, duplicates should
+    be removed to avoid processing the same episode multiple times. The order
+    of first occurrence is preserved to maintain user intent.
+
+    Args:
+        indices: Tuple of episode indices (may contain duplicates).
+
+    Returns:
+        List of unique indices in order of first occurrence.
+
+    Example:
+        >>> deduplicate_indices((1, 3, 2, 3, 1, 5))
+        [1, 3, 2, 5]
+
+    Validates: Requirements 1.3
+    """
+    seen: set[int] = set()
+    result: list[int] = []
+
+    for index in indices:
+        if index not in seen:
+            seen.add(index)
+            result.append(index)
+
+    return result
+
+
+def process_batch(
+    feed_url: str,
+    indices: tuple[int, ...],
+    skip_language_check: bool,
+) -> list[BatchResult]:
+    """Process multiple episodes sequentially.
+
+    Orchestrates batch transcription by processing each episode one at a time
+    in the order specified. Deduplicates indices to avoid processing the same
+    episode multiple times. Displays progress information and continues
+    processing even if individual episodes fail.
+
+    Args:
+        feed_url: RSS feed URL.
+        indices: Episode indices to process (may contain duplicates).
+        skip_language_check: If True, bypass language detection.
+
+    Returns:
+        List of BatchResult objects, one per unique episode processed.
+
+    Validates: Requirements 2.1, 5.1
+    """
+    from podtext.core.config import ConfigError, load_config
+    from podtext.core.pipeline import run_pipeline_safe
+    from podtext.services.rss import RSSFeedError, parse_feed
+
+    # Deduplicate indices while preserving order
+    unique_indices = deduplicate_indices(indices)
+
+    # Display initial message with total count (Requirement 5.1)
+    total_count = len(unique_indices)
+    click.echo(f"Processing {total_count} episode{'s' if total_count != 1 else ''} from feed...")
+    click.echo()
+
+    # Load configuration once for all episodes
+    try:
+        config = load_config()
+    except ConfigError as e:
+        # Fatal error - cannot proceed without config
+        click.echo(f"Configuration error: {e}", err=True)
+        return [
+            BatchResult(
+                index=idx,
+                success=False,
+                output_path=None,
+                error_message=f"Configuration error: {e}",
+            )
+            for idx in unique_indices
+        ]
+
+    # Parse feed once to get all episodes
+    try:
+        # Get enough episodes to cover the maximum index
+        max_index = max(unique_indices) if unique_indices else 1
+        episode_list = parse_feed(feed_url, limit=max_index + 10)
+    except RSSFeedError as e:
+        # Fatal error - cannot proceed without feed
+        click.echo(f"Feed error: {e}", err=True)
+        return [
+            BatchResult(
+                index=idx,
+                success=False,
+                output_path=None,
+                error_message=f"Feed error: {e}",
+            )
+            for idx in unique_indices
+        ]
+
+    # Create a mapping of index to episode for quick lookup
+    episode_map = {ep.index: ep for ep in episode_list}
+
+    # Process each episode sequentially (Requirement 2.1)
+    results: list[BatchResult] = []
+
+    for i, index in enumerate(unique_indices, 1):
+        # Display progress indicator (Requirement 5.2)
+        click.echo(f"[{i}/{total_count}] Processing episode {index}...")
+
+        # Check if episode exists in feed
+        episode = episode_map.get(index)
+        if episode is None:
+            error_msg = f"Episode {index} not found in feed"
+            results.append(
+                BatchResult(
+                    index=index,
+                    success=False,
+                    output_path=None,
+                    error_message=error_msg,
+                )
+            )
+            click.echo(f"✗ Episode {index} failed: {error_msg}", err=True)
+            click.echo()
+            continue
+
+        # Process the episode using the pipeline
+        pipeline_result = run_pipeline_safe(
+            episode=episode,
+            config=config,
+            skip_language_check=skip_language_check,
+        )
+
+        if pipeline_result is not None:
+            # Success
+            output_path_str = str(pipeline_result.output_path)
+            results.append(
+                BatchResult(
+                    index=index,
+                    success=True,
+                    output_path=output_path_str,
+                    error_message=None,
+                )
+            )
+            click.echo(f"✓ Episode {index} transcribed successfully: {output_path_str}")
+        else:
+            # Failure - run_pipeline_safe already displayed error message
+            error_msg = "Transcription failed (see error above)"
+            results.append(
+                BatchResult(
+                    index=index,
+                    success=False,
+                    output_path=None,
+                    error_message=error_msg,
+                )
+            )
+            click.echo(f"✗ Episode {index} failed", err=True)
+
+        click.echo()
+
+    return results
+
+
+def display_summary(results: list[BatchResult]) -> None:
+    """Display summary of batch processing results.
+
+    Shows counts of successful and failed episodes after batch processing
+    completes. Provides a clear overview of the batch operation outcome.
+
+    Args:
+        results: List of BatchResult objects from batch processing.
+
+    Validates: Requirements 3.3, 5.4
+    """
+    if not results:
+        click.echo("No episodes were processed.")
+        return
+
+    # Count successes and failures
+    success_count = sum(1 for r in results if r.success)
+    failure_count = sum(1 for r in results if not r.success)
+
+    # Display summary header
+    click.echo()
+    click.echo("Batch processing complete:")
+
+    # Display success count
+    if success_count > 0:
+        click.echo(f"  ✓ {success_count} successful")
+
+    # Display failure count
+    if failure_count > 0:
+        click.echo(f"  ✗ {failure_count} failed")
 
 
 def format_search_results(results: list[PodcastSearchResult]) -> str:
@@ -130,110 +346,36 @@ def episodes(feed_url: str, limit: int) -> None:
 
 @cli.command()
 @click.argument("feed_url")
-@click.argument("index", type=int)
+@click.argument("indices", nargs=-1, type=int, required=True)
 @click.option("--skip-language-check", is_flag=True, help="Skip language detection")
-def transcribe(feed_url: str, index: int, skip_language_check: bool) -> None:
-    """Transcribe a podcast episode.
+def transcribe(feed_url: str, indices: tuple[int, ...], skip_language_check: bool) -> None:
+    """Transcribe one or more podcast episodes.
 
     FEED_URL: URL of the podcast RSS feed.
-    INDEX: Episode index number from the episodes list.
+    INDICES: One or more episode index numbers from the episodes list.
 
-    Downloads the episode, transcribes it using MLX-Whisper, and generates
-    a markdown file with the transcript and AI analysis.
+    Downloads the episodes, transcribes them using MLX-Whisper, and generates
+    markdown files with the transcripts and AI analysis. Episodes are processed
+    sequentially in the order specified.
+
+    Validates: Requirements 1.1, 1.4, 1.5, 3.5
     """
-    # Import here to avoid circular imports and heavy dependencies at startup
-
-    from podtext.core.config import ConfigError, load_config
-    from podtext.core.output import generate_markdown
-    from podtext.services.claude import analyze_content
-    from podtext.services.downloader import (
-        DownloadError,
-        download_with_optional_cleanup,
-    )
-    from podtext.services.transcriber import (
-        TranscriptionError,
-    )
-    from podtext.services.transcriber import (
-        transcribe as transcribe_audio,
+    # Process all episodes using batch processing
+    results = process_batch(
+        feed_url=feed_url,
+        indices=indices,
+        skip_language_check=skip_language_check,
     )
 
-    # Load configuration
-    try:
-        config = load_config()
-    except ConfigError as e:
-        click.echo(f"Error: {e}", err=True)
+    # Display summary of results
+    display_summary(results)
+
+    # Set exit code based on results (Requirement 3.5)
+    # Exit code 0 if all episodes succeeded, 1 if any failures
+    if any(not result.success for result in results):
         sys.exit(1)
-
-    # Parse feed to get episode info
-    try:
-        episode_list = parse_feed(feed_url, limit=index + 10)  # Get enough episodes
-    except RSSFeedError as e:
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(1)
-
-    # Find the episode with the specified index
-    episode = None
-    for ep in episode_list:
-        if ep.index == index:
-            episode = ep
-            break
-
-    if episode is None:
-        click.echo(f"Error: Episode with index {index} not found.", err=True)
-        sys.exit(1)
-
-    click.echo(f"Transcribing: {episode.title}")
-    click.echo(f"Published: {episode.pub_date.strftime('%Y-%m-%d')}")
-
-    # Download media file
-    click.echo("Downloading media file...")
-    try:
-        with download_with_optional_cleanup(episode.media_url, config) as media_path:
-            click.echo(f"Downloaded to: {media_path}")
-
-            # Transcribe audio
-            click.echo("Transcribing audio...")
-            try:
-                transcription = transcribe_audio(
-                    media_path,
-                    model=config.whisper.model,
-                    skip_language_check=skip_language_check,
-                )
-                click.echo(f"Transcription complete. Language: {transcription.language}")
-            except TranscriptionError as e:
-                click.echo(f"Error: {e}", err=True)
-                sys.exit(1)
-
-            # Analyze content with Claude
-            click.echo("Analyzing content...")
-            api_key = config.get_anthropic_key()
-            analysis = analyze_content(
-                transcription.text,
-                api_key=api_key,
-                warn_on_unavailable=True,
-            )
-
-            # Generate output filename
-            safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in episode.title)[
-                :50
-            ]
-            output_filename = f"{safe_title}.md"
-            output_path = config.get_output_dir() / output_filename
-
-            # Generate markdown output
-            click.echo("Generating output...")
-            generate_markdown(
-                episode=episode,
-                transcription=transcription,
-                analysis=analysis,
-                output_path=output_path,
-            )
-
-            click.echo(f"Output saved to: {output_path}")
-
-    except DownloadError as e:
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(1)
+    else:
+        sys.exit(0)
 
 
 if __name__ == "__main__":
