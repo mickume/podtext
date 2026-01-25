@@ -40,8 +40,9 @@ Transcript:
 
 # Keyword Extraction
 
-Extract relevant keywords from the following podcast transcript.
-Include names, concepts, technologies, and other significant terms.
+Extract the most important keywords from the following podcast transcript.
+Focus on key names, core concepts, technologies, and broader categories.
+Limit to 20 keywords maximum, prioritizing the most significant terms.
 
 Format your response as a JSON array of strings:
 ["keyword1", "keyword2", ...]
