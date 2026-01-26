@@ -760,6 +760,7 @@ class TestSequentialProcessingOrder:
         from unittest.mock import MagicMock, patch
 
         from podtext.cli.main import deduplicate_indices, process_batch
+        from podtext.services.rss import FeedInfo
 
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
@@ -776,7 +777,9 @@ class TestSequentialProcessingOrder:
                 mock_episode.index = i
                 mock_episodes.append(mock_episode)
 
-            mock_parse_feed.return_value = mock_episodes
+            # Return FeedInfo object with episodes
+            mock_feed_info = FeedInfo(title="Test Podcast", episodes=mock_episodes)
+            mock_parse_feed.return_value = mock_feed_info
 
             # Mock successful pipeline results
             def create_mock_result(episode: MagicMock) -> MagicMock:
@@ -836,6 +839,7 @@ class TestSequentialProcessingOrder:
         from unittest.mock import MagicMock, call, patch
 
         from podtext.cli.main import deduplicate_indices, process_batch
+        from podtext.services.rss import FeedInfo
 
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
@@ -852,7 +856,8 @@ class TestSequentialProcessingOrder:
                 mock_episode.index = i
                 mock_episodes.append(mock_episode)
 
-            mock_parse_feed.return_value = mock_episodes
+            mock_feed_info = FeedInfo(title="Test Podcast", episodes=mock_episodes)
+            mock_parse_feed.return_value = mock_feed_info
 
             # Track call order
             call_order = []
@@ -916,6 +921,9 @@ class TestSequentialProcessingOrder:
 
         from podtext.cli.main import deduplicate_indices, process_batch
 
+        from podtext.services.rss import FeedInfo
+
+
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
              patch("podtext.core.pipeline.run_pipeline_safe") as mock_pipeline:
@@ -931,7 +939,8 @@ class TestSequentialProcessingOrder:
                 mock_episode.index = i
                 mock_episodes.append(mock_episode)
 
-            mock_parse_feed.return_value = mock_episodes
+            mock_feed_info = FeedInfo(title="Test Podcast", episodes=mock_episodes)
+            mock_parse_feed.return_value = mock_feed_info
 
             # Track episode lifecycle: (index, event_type, timestamp)
             lifecycle_events: list[tuple[int, str, int]] = []
@@ -1021,6 +1030,9 @@ class TestSequentialProcessingOrder:
 
         from podtext.cli.main import process_batch
 
+        from podtext.services.rss import FeedInfo
+
+
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
              patch("podtext.core.pipeline.run_pipeline_safe") as mock_pipeline:
@@ -1036,7 +1048,8 @@ class TestSequentialProcessingOrder:
                 mock_episode.index = i
                 mock_episodes.append(mock_episode)
 
-            mock_parse_feed.return_value = mock_episodes
+            mock_feed_info = FeedInfo(title="Test Podcast", episodes=mock_episodes)
+            mock_parse_feed.return_value = mock_feed_info
 
             # Track active episodes (episodes currently being processed)
             active_episodes: list[int] = []
@@ -1191,6 +1204,7 @@ class TestErrorIsolation:
         from unittest.mock import MagicMock, patch
 
         from podtext.cli.main import process_batch
+        from podtext.services.rss import FeedInfo
 
         # Filter failure positions to be within range
         valid_failures = [pos for pos in failure_positions if pos < total_episodes]
@@ -1213,7 +1227,8 @@ class TestErrorIsolation:
                 mock_episode.index = i
                 mock_episodes.append(mock_episode)
 
-            mock_parse_feed.return_value = mock_episodes
+            mock_feed_info = FeedInfo(title="Test Podcast", episodes=mock_episodes)
+            mock_parse_feed.return_value = mock_feed_info
 
             # Track which episodes were attempted
             attempted_episodes = []
@@ -1299,6 +1314,9 @@ class TestErrorIsolation:
 
         from podtext.cli.main import deduplicate_indices, process_batch
 
+        from podtext.services.rss import FeedInfo
+
+
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
              patch("podtext.core.pipeline.run_pipeline_safe") as mock_pipeline:
@@ -1314,7 +1332,8 @@ class TestErrorIsolation:
                 mock_episode.index = i
                 mock_episodes.append(mock_episode)
 
-            mock_parse_feed.return_value = mock_episodes
+            mock_feed_info = FeedInfo(title="Test Podcast", episodes=mock_episodes)
+            mock_parse_feed.return_value = mock_feed_info
 
             # Pipeline fails for the specific failure_index, succeeds for others
             def pipeline_with_single_failure(episode: MagicMock, **kwargs: object) -> MagicMock | None:
@@ -1381,6 +1400,9 @@ class TestErrorIsolation:
 
         from podtext.cli.main import deduplicate_indices, process_batch
 
+        from podtext.services.rss import FeedInfo
+
+
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
              patch("podtext.core.pipeline.run_pipeline_safe") as mock_pipeline:
@@ -1396,7 +1418,8 @@ class TestErrorIsolation:
                 mock_episode.index = i
                 mock_episodes.append(mock_episode)
 
-            mock_parse_feed.return_value = mock_episodes
+            mock_feed_info = FeedInfo(title="Test Podcast", episodes=mock_episodes)
+            mock_parse_feed.return_value = mock_feed_info
 
             # Track attempted episodes
             attempted_episodes = []
@@ -1466,6 +1489,9 @@ class TestErrorIsolation:
 
         from podtext.cli.main import deduplicate_indices, process_batch
 
+        from podtext.services.rss import FeedInfo
+
+
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
              patch("podtext.core.pipeline.run_pipeline_safe") as mock_pipeline:
@@ -1481,7 +1507,8 @@ class TestErrorIsolation:
                 mock_episode.index = i
                 mock_episodes.append(mock_episode)
 
-            mock_parse_feed.return_value = mock_episodes
+            mock_feed_info = FeedInfo(title="Test Podcast", episodes=mock_episodes)
+            mock_parse_feed.return_value = mock_feed_info
 
             # Get unique indices to determine how many will actually be processed
             unique_indices = deduplicate_indices(tuple(indices))
@@ -1560,6 +1587,9 @@ class TestErrorIsolation:
 
         from podtext.cli.main import deduplicate_indices, process_batch
 
+        from podtext.services.rss import FeedInfo
+
+
         with patch("podtext.core.config.load_config") as mock_load_config, \
              patch("podtext.services.rss.parse_feed") as mock_parse_feed, \
              patch("podtext.core.pipeline.run_pipeline_safe") as mock_pipeline:
@@ -1575,7 +1605,8 @@ class TestErrorIsolation:
                 mock_episode.index = i
                 mock_episodes.append(mock_episode)
 
-            mock_parse_feed.return_value = mock_episodes
+            mock_feed_info = FeedInfo(title="Test Podcast", episodes=mock_episodes)
+            mock_parse_feed.return_value = mock_feed_info
 
             # Track which episodes were sent to pipeline
             pipeline_calls = []

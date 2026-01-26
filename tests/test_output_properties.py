@@ -200,11 +200,12 @@ class TestMarkdownOutputCompleteness:
             "Markdown should start with YAML frontmatter delimiter '---'"
         )
 
-        # Extract frontmatter
-        parts = markdown.split("---")
-        assert len(parts) >= 3, "Markdown should have opening and closing '---' delimiters"
+        # Extract frontmatter properly - find the closing --- on its own line
+        import re
+        match = re.match(r'^---\n(.*?)\n---\n', markdown, re.DOTALL)
+        assert match is not None, "Markdown should have opening and closing '---' delimiters"
 
-        yaml_content = parts[1].strip()
+        yaml_content = match.group(1).strip()
 
         # Property: Frontmatter SHALL be valid YAML
         try:
