@@ -95,12 +95,12 @@ class TestFormatFrontmatter:
         data = yaml.safe_load(yaml_content)
         assert data["pub_date"] == "2024-01-15"
 
-    def test_contains_summary(self, sample_episode, sample_analysis):
-        """Validates: Requirement 7.2 - Summary in frontmatter."""
+    def test_summary_not_in_frontmatter(self, sample_episode, sample_analysis):
+        """Summary is no longer included in frontmatter (moved to main content)."""
         result = _format_frontmatter(sample_episode, sample_analysis)
         yaml_content = result.strip("---\n")
         data = yaml.safe_load(yaml_content)
-        assert data["summary"] == "A test episode about software testing practices."
+        assert "summary" not in data
 
     def test_contains_topics(self, sample_episode, sample_analysis):
         """Validates: Requirement 7.3 - Topics in frontmatter."""
@@ -191,6 +191,49 @@ class TestFormatContent:
         assert "Hello and welcome to the show." in result
         assert "Today we discuss testing." in result
 
+    def test_includes_summary_section(self, sample_transcription):
+        """Validates: Requirement 7.2 - Summary in main content."""
+        result = _format_content(
+            sample_transcription, [], summary="This is a test summary."
+        )
+        assert "## Summary" in result
+        assert "This is a test summary." in result
+
+    def test_summary_before_transcription(self, sample_transcription):
+        """Summary appears before transcription content."""
+        result = _format_content(
+            sample_transcription, [], summary="Test summary"
+        )
+        summary_pos = result.find("## Summary")
+        transcription_pos = result.find("Hello and welcome")
+        assert summary_pos < transcription_pos
+
+    def test_show_notes_after_summary(self, sample_transcription):
+        """Show notes appear after summary but before transcription."""
+        result = _format_content(
+            sample_transcription,
+            [],
+            show_notes="<p>These are show notes</p>",
+            summary="Test summary",
+        )
+        summary_pos = result.find("## Summary")
+        show_notes_pos = result.find("## Show Notes")
+        transcription_pos = result.find("## Transcription")
+        assert summary_pos < show_notes_pos < transcription_pos
+
+    def test_transcription_header_when_summary_present(self, sample_transcription):
+        """Transcription section has header when summary is present."""
+        result = _format_content(
+            sample_transcription, [], summary="Test summary"
+        )
+        assert "## Transcription" in result
+
+    def test_no_transcription_header_without_summary_or_notes(self, sample_transcription):
+        """No transcription header when no summary or show notes."""
+        result = _format_content(sample_transcription, [])
+        assert "## Transcription" not in result
+        assert "Hello and welcome to the show." in result
+
     def test_removes_advertisements(self):
         """Validates: Requirement 7.5 - Ads are marked in transcription."""
         transcription = TranscriptionResult(
@@ -218,7 +261,7 @@ class TestFormatContent:
             language="en",
         )
         result = _format_content(transcription, [])
-        assert result == "Just plain text here."
+        assert "Just plain text here." in result
 
 
 class TestAddParagraphBreaks:
@@ -258,7 +301,9 @@ class TestGenerateMarkdownString:
         # Has frontmatter
         assert result.startswith("---\n")
         assert "title:" in result
-        # Has content
+        # Has summary in content
+        assert "## Summary" in result
+        # Has transcription content
         assert "Hello and welcome to the show." in result
 
     def test_frontmatter_before_content(
@@ -267,13 +312,13 @@ class TestGenerateMarkdownString:
         """Frontmatter appears before content."""
         result = generate_markdown_string(sample_episode, sample_transcription, sample_analysis)
         frontmatter_end = result.rfind("---\n") + 4
-        content_start = result.find("Hello")
-        assert frontmatter_end < content_start
+        summary_start = result.find("## Summary")
+        assert frontmatter_end < summary_start
 
     def test_includes_all_analysis_results(
         self, sample_episode, sample_transcription, sample_analysis
     ):
-        """Validates: Requirement 7.6 - All analysis results in frontmatter."""
+        """Validates: Requirement 7.6 - All analysis results included."""
         result = generate_markdown_string(sample_episode, sample_transcription, sample_analysis)
         # Extract and parse frontmatter
         lines = result.split("\n")
@@ -291,10 +336,14 @@ class TestGenerateMarkdownString:
         yaml_content = "\n".join(yaml_lines)
         data = yaml.safe_load(yaml_content)
 
-        # All analysis results should be present
-        assert "summary" in data
+        # Topics and keywords should be in frontmatter
         assert "topics" in data
         assert "keywords" in data
+        
+        # Summary should be in main content, not frontmatter
+        assert "summary" not in data
+        assert "## Summary" in result
+        assert "A test episode about software testing practices." in result
 
     def test_with_podcast_name(self, sample_episode, sample_transcription, sample_analysis):
         """Podcast name is included when provided."""
@@ -400,7 +449,8 @@ class TestMarkdownOutputCompleteness:
         assert "pub_date:" in result
 
         # Analysis results (Requirement 7.6)
-        assert "summary:" in result
+        # Summary now in main content, not frontmatter
+        assert "## Summary" in result
         assert "topics:" in result
         assert "keywords:" in result
 
@@ -423,3 +473,5 @@ class TestMarkdownOutputCompleteness:
         assert isinstance(data, dict)
         assert "title" in data
         assert "pub_date" in data
+        # Summary should not be in frontmatter anymore
+        assert "summary" not in data

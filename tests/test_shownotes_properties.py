@@ -150,7 +150,7 @@ def test_unicode_preservation(unicode_text: str) -> None:
 
 
 def test_show_notes_appended_to_content() -> None:
-    """Test that show notes are appended after transcription content."""
+    """Test that show notes are placed before transcription content."""
     transcription = TranscriptionResult(
         text="This is the transcription.",
         paragraphs=["This is the transcription."],
@@ -163,10 +163,11 @@ def test_show_notes_appended_to_content() -> None:
     assert "## Show Notes" in result
     assert "These are the show notes." in result
 
-    # Show notes should come after transcription
-    trans_pos = result.find("This is the transcription.")
+    # Show notes should come before transcription (with transcription header)
     notes_pos = result.find("## Show Notes")
-    assert trans_pos < notes_pos
+    trans_header_pos = result.find("## Transcription")
+    assert notes_pos < trans_header_pos
+    assert trans_header_pos > 0, "Transcription header should be present when show notes exist"
 
 
 def test_episode_info_with_show_notes() -> None:
