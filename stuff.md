@@ -23,3 +23,10 @@ Add all new files to git and commit them with a meaningfull but not to overly ve
 Credits used ca. 250 for the initial build, another 100 for enhancements and bug-fixes.
 
 ---
+
+If you run "make test", you'll notice that some tests fail. Create a list of the failed test, then create a GitHub issue that notes all the failing test, with label "bug" added to the  issue.
+
+Read the issues in the repo, that are open and have the label "bug". For each found, analyze the description of the issue. Next, analyze the codebase and find the root-cause of the issue. Before you make any changes to the repo, create a feature branch. Fix the issue, make sure that all tests pass, or add new tests if needed. Once you are done with the implementation, create a pull request and link it to the issue for manual review.
+
+---
+There are open issues in GitHub, that have the label "enhancement". For each found, I want you to one-shot an implementation. Do not bother with creating requirements, design and task documents on how to implement the issue, but don't be lazy in your implementation either. Apply all the good work you usually do. Before you make any changes to the repo, create a feature branch. Fix the issue, make sure that all tests pass, or add new tests if needed. Once you are done with the implementation, create a pull request and link it to the issue for manual review.

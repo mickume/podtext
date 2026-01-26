@@ -134,7 +134,9 @@ def test_existing_fields_preserved(
 
     For any valid EpisodeInfo and AnalysisResult, the generated frontmatter
     should contain all existing fields (title, pub_date) and conditionally
-    include podcast, summary, topics, and keywords when provided.
+    include podcast, topics, and keywords when provided.
+    
+    Note: Summary is now in main content, not frontmatter.
 
     Validates: Requirements 3.1, 3.2
     """
@@ -167,8 +169,8 @@ def test_existing_fields_preserved(
     if podcast_name:
         assert parsed.get("podcast") == podcast_name
 
-    if summary:
-        assert parsed.get("summary") == summary
+    # Summary is no longer in frontmatter (moved to main content)
+    assert "summary" not in parsed
 
     if topics:
         assert parsed.get("topics") == topics

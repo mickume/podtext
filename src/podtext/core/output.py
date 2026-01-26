@@ -37,9 +37,10 @@ def _format_frontmatter(
     - podcast: Podcast name (if provided)
     - feed_url: RSS feed URL (if available)
     - media_url: Episode media file URL
-    - summary: AI-generated summary
     - topics: List of topics covered
     - keywords: List of relevant keywords
+
+    Note: Summary is no longer included in frontmatter (moved to main content).
 
     Args:
         episode: Episode information from RSS feed.
@@ -49,7 +50,7 @@ def _format_frontmatter(
     Returns:
         YAML frontmatter string with delimiters.
 
-    Validates: Requirements 4.5, 7.2, 7.3, 7.4, 7.6
+    Validates: Requirements 4.5, 7.3, 7.4, 7.6
     """
     frontmatter_data: dict[str, str | list[str]] = {
         "title": episode.title,
@@ -67,10 +68,8 @@ def _format_frontmatter(
     # Add media_url (always present, Requirement: enhanced-metadata 2.1, 2.2)
     frontmatter_data["media_url"] = episode.media_url
 
-    # Add analysis results (Requirements 7.2, 7.3, 7.4, 7.6)
-    if analysis.summary:
-        frontmatter_data["summary"] = analysis.summary
-
+    # Add analysis results (Requirements 7.3, 7.4, 7.6)
+    # Note: Summary is now added to main content instead of frontmatter
     if analysis.topics:
         frontmatter_data["topics"] = analysis.topics
 
@@ -94,45 +93,62 @@ def _format_content(
     transcription: TranscriptionResult,
     ad_markers: list[tuple[int, int]],
     show_notes: str = "",
+    summary: str = "",
 ) -> str:
-    """Format transcription content with paragraph breaks, ad markers, and show notes.
+    """Format transcription content with summary, show notes, paragraph breaks, and ad markers.
 
     Processes the transcription text to:
-    1. Remove detected advertisements and insert markers
-    2. Format paragraphs with proper spacing
-    3. Append show notes section if available
+    1. Add summary section at the beginning (if available)
+    2. Add show notes section (if available)
+    3. Remove detected advertisements and insert markers
+    4. Format paragraphs with proper spacing
 
     Args:
         transcription: Transcription result with text and paragraphs.
         ad_markers: List of (start, end) positions for advertisements.
-        show_notes: Optional show notes content to append.
+        show_notes: Optional show notes content to prepend.
+        summary: Optional AI-generated summary to prepend.
 
     Returns:
-        Formatted content string with paragraphs, ad markers, and show notes.
+        Formatted content string with summary, show notes, paragraphs, and ad markers.
 
-    Validates: Requirements 4.4, 7.5
+    Validates: Requirements 4.4, 7.2, 7.5
     """
-    # If we have paragraphs from transcription, use them for formatting
+    content_parts = []
+
+    # Add summary section if available (Requirement 7.2)
+    if summary and summary.strip():
+        content_parts.append(f"## Summary\n\n{summary.strip()}")
+
+    # Add show notes if available
+    formatted_show_notes = _format_show_notes(show_notes)
+    if formatted_show_notes:
+        content_parts.append(formatted_show_notes)
+
+    # Process transcription content
     if transcription.paragraphs:
         # Process advertisement removal on each paragraph if needed
         if ad_markers:
             # For ad markers, we need to work with the full text
             processed_text = remove_advertisements(transcription.text, ad_markers)
-            content = _add_paragraph_breaks(processed_text)
+            transcription_content = _add_paragraph_breaks(processed_text)
         else:
             # Use original paragraphs with double newlines for readability
-            content = "\n\n".join(transcription.paragraphs)
+            transcription_content = "\n\n".join(transcription.paragraphs)
     else:
         # No paragraphs available, process the raw text
         processed_text = remove_advertisements(transcription.text, ad_markers)
-        content = _add_paragraph_breaks(processed_text)
+        transcription_content = _add_paragraph_breaks(processed_text)
 
-    # Append show notes if available
-    formatted_show_notes = _format_show_notes(show_notes)
-    if formatted_show_notes:
-        content = f"{content}\n\n{formatted_show_notes}"
+    # Add transcription section header and content
+    if content_parts:
+        # If we have summary or show notes, add a header for the transcription
+        content_parts.append(f"## Transcription\n\n{transcription_content}")
+    else:
+        # No summary or show notes, just add the transcription directly
+        content_parts.append(transcription_content)
 
-    return content
+    return "\n\n".join(content_parts)
 
 
 def _format_show_notes(show_notes: str, max_length: int = MAX_SHOW_NOTES_LENGTH) -> str:
@@ -235,7 +251,9 @@ def generate_markdown(
     """Generate a markdown file with frontmatter and transcribed content.
 
     Creates a markdown file containing:
-    - YAML frontmatter with episode metadata and analysis results
+    - YAML frontmatter with episode metadata and analysis results (topics, keywords)
+    - Summary section (if available from AI analysis)
+    - Show notes section (if available from RSS feed)
     - Transcribed text with paragraph formatting
     - Advertisement removal markers where ads were detected
 
@@ -245,7 +263,6 @@ def generate_markdown(
     title: "Episode Title"
     pub_date: "2024-01-15"
     podcast: "Podcast Name"
-    summary: "AI-generated summary..."
     topics:
       - "Topic one sentence"
       - "Topic two sentence"
@@ -253,6 +270,16 @@ def generate_markdown(
       - keyword1
       - keyword2
     ---
+
+    ## Summary
+
+    AI-generated summary...
+
+    ## Show Notes
+
+    Show notes from RSS feed...
+
+    ## Transcription
 
     Transcribed content with paragraphs...
 
@@ -292,14 +319,15 @@ def generate_markdown(
         ... )
         >>> generate_markdown(episode, transcription, analysis, Path("output.md"))
     """
-    # Generate frontmatter
+    # Generate frontmatter (without summary)
     frontmatter = _format_frontmatter(episode, analysis, podcast_name)
 
-    # Format content with ad removal and show notes
+    # Format content with summary, show notes, and ad removal
     content = _format_content(
         transcription,
         analysis.ad_markers,
         show_notes=episode.show_notes,
+        summary=analysis.summary,
     )
 
     # Combine frontmatter and content
@@ -334,14 +362,15 @@ def generate_markdown_string(
 
     Validates: Requirements 4.4, 4.5, 7.2, 7.3, 7.4, 7.5, 7.6
     """
-    # Generate frontmatter
+    # Generate frontmatter (without summary)
     frontmatter = _format_frontmatter(episode, analysis, podcast_name)
 
-    # Format content with ad removal and show notes
+    # Format content with summary, show notes, and ad removal
     content = _format_content(
         transcription,
         analysis.ad_markers,
         show_notes=episode.show_notes,
+        summary=analysis.summary,
     )
 
     # Combine frontmatter and content

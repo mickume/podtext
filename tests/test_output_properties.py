@@ -188,7 +188,8 @@ class TestMarkdownOutputCompleteness:
         Feature: podtext, Property 8: Markdown Output Completeness
 
         For any EpisodeInfo and AnalysisResult, the generated markdown SHALL contain
-        valid YAML frontmatter with title, pub_date, summary, topics, and keywords fields.
+        valid YAML frontmatter with title, pub_date, topics, and keywords fields.
+        Summary is now in main content, not frontmatter.
 
         **Validates: Requirements 4.4, 4.5, 7.6**
         """
@@ -233,11 +234,15 @@ class TestMarkdownOutputCompleteness:
             f"Expected '{expected_date}', got '{data['pub_date']}'"
         )
 
-        # Property: Frontmatter SHALL contain summary field (when analysis has summary)
-        assert "summary" in data, (
-            f"Frontmatter should contain 'summary' field. Got keys: {list(data.keys())}"
+        # Property: Summary is now in main content, not frontmatter
+        assert "summary" not in data, (
+            f"Frontmatter should NOT contain 'summary' field (moved to main content). Got keys: {list(data.keys())}"
         )
-        assert data["summary"] == analysis.summary, "Summary should match analysis summary"
+        
+        # Property: Summary should be in main content when present
+        if analysis.summary:
+            assert "## Summary" in markdown, "Summary section should be in main content"
+            assert analysis.summary in markdown, "Summary text should be in main content"
 
         # Property: Frontmatter SHALL contain topics field (when analysis has topics)
         assert "topics" in data, (
