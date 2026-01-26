@@ -282,11 +282,11 @@ class TestResultLimiting:
             mock_feedparser.return_value = feed
 
             # Execute feed parsing
-            results = parse_feed("https://example.com/feed.xml", limit=limit)
+            feed_info = parse_feed("https://example.com/feed.xml", limit=limit)
 
             # Property: Results length SHALL be ≤ limit
-            assert len(results) <= limit, (
-                f"Episode results length {len(results)} exceeds limit {limit}"
+            assert len(feed_info.episodes) <= limit, (
+                f"Episode results length {len(feed_info.episodes)} exceeds limit {limit}"
             )
 
     @settings(max_examples=100)
@@ -324,11 +324,11 @@ class TestResultLimiting:
 
             mock_feedparser.return_value = feed
 
-            results = parse_feed("https://example.com/feed.xml", limit=limit)
+            feed_info = parse_feed("https://example.com/feed.xml", limit=limit)
 
             # Property: Results length SHALL be ≤ limit
-            assert len(results) <= limit, (
-                f"Episode results length {len(results)} exceeds limit {limit}"
+            assert len(feed_info.episodes) <= limit, (
+                f"Episode results length {len(feed_info.episodes)} exceeds limit {limit}"
             )
 
     @settings(max_examples=100)
@@ -606,9 +606,9 @@ class TestRSSParsingValidity:
 
             mock_feedparser.return_value = feed
 
-            results = parse_feed("https://example.com/feed.xml", limit=limit)
+            feed_info = parse_feed("https://example.com/feed.xml", limit=limit)
 
-            for episode in results:
+            for episode in feed_info.episodes:
                 # Property: All EpisodeInfo fields SHALL be valid
 
                 # Non-empty title

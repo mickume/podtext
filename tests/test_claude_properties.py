@@ -154,8 +154,10 @@ class TestPromptRuntimeLoading:
 
         **Validates: Requirements 9.2**
         """
-        # Ensure prompts are different
+        # Ensure prompts are different and not substrings of each other
         assume(initial_prompt.strip() != updated_prompt.strip())
+        assume(initial_prompt not in updated_prompt)
+        assume(updated_prompt not in initial_prompt)
 
         base_dir = Path(tempfile.mkdtemp())
         unique_id = str(uuid.uuid4())[:8]
