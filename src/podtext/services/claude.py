@@ -427,9 +427,14 @@ def analyze_content(
                 "Transcript will be output without AI analysis."
             )
         return AnalysisResult()
-    except ClaudeAPIError:
-        # Continue with other analyses even if one fails
-        pass
+    except ClaudeAPIError as e:
+        # API errors (e.g., insufficient credits, invalid requests) should be reported
+        if warn_on_unavailable:
+            _display_warning(
+                f"Claude API error during summary: {e}. "
+                "Transcript will be output without AI analysis."
+            )
+        return AnalysisResult()
 
     # Get topics
     try:
@@ -442,8 +447,9 @@ def analyze_content(
         result.topics = _parse_topics_response(topics_response)
     except ClaudeRateLimitError:
         raise
-    except ClaudeAPIError:
-        pass
+    except ClaudeAPIError as e:
+        if warn_on_unavailable:
+            _display_warning(f"Claude API error during topic extraction: {e}")
 
     # Get keywords
     try:
@@ -456,8 +462,9 @@ def analyze_content(
         result.keywords = _parse_keywords_response(keywords_response)
     except ClaudeRateLimitError:
         raise
-    except ClaudeAPIError:
-        pass
+    except ClaudeAPIError as e:
+        if warn_on_unavailable:
+            _display_warning(f"Claude API error during keyword extraction: {e}")
 
     # Get advertisement markers
     try:
@@ -470,8 +477,9 @@ def analyze_content(
         result.ad_markers = _parse_advertisement_response(ad_response)
     except ClaudeRateLimitError:
         raise
-    except ClaudeAPIError:
-        pass
+    except ClaudeAPIError as e:
+        if warn_on_unavailable:
+            _display_warning(f"Claude API error during advertisement detection: {e}")
 
     return result
 
