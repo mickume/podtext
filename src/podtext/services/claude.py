@@ -10,15 +10,26 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from dataclasses import dataclass, field
 
 import anthropic
-from anthropic import APIConnectionError, APIError, AuthenticationError
+from anthropic import (
+    APIConnectionError,
+    APIError,
+    APIStatusError,
+    AuthenticationError,
+    RateLimitError,
+)
 
 from podtext.core.prompts import Prompts, load_prompts
 
 # Default Claude model to use
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
+
+# Retry configuration
+MAX_RETRIES = 3
+RETRY_DELAY_SECONDS = 30
 
 
 class ClaudeAPIError(Exception):
@@ -32,6 +43,14 @@ class ClaudeAPIUnavailableError(ClaudeAPIError):
     allowing callers to handle graceful degradation.
 
     Validates: Requirements 6.4
+    """
+
+
+class ClaudeRateLimitError(ClaudeAPIError):
+    """Raised when Claude API rate limits are exceeded.
+
+    This indicates the API has returned a rate limit error,
+    and processing should be aborted.
     """
 
 
@@ -86,7 +105,10 @@ def _call_claude(
     text: str,
     model: str = DEFAULT_MODEL,
 ) -> str:
-    """Make a call to Claude API.
+    """Make a call to Claude API with retry logic.
+
+    Retries on transient errors (connection issues, server errors) with
+    exponential backoff. Aborts immediately on rate limit errors.
 
     Args:
         client: Anthropic client instance.
@@ -98,33 +120,81 @@ def _call_claude(
         Claude's response text.
 
     Raises:
-        ClaudeAPIUnavailableError: If API is unavailable.
+        ClaudeAPIUnavailableError: If API is unavailable after retries.
+        ClaudeRateLimitError: If API rate limits are exceeded.
         ClaudeAPIError: If API returns an error.
     """
-    try:
-        message = client.messages.create(
-            model=model,
-            max_tokens=4096,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"{prompt}\n\n{text}",
-                }
-            ],
-        )
+    last_error: Exception | None = None
 
-        # Extract text from response
-        if message.content and len(message.content) > 0:
-            content_block = message.content[0]
-            if hasattr(content_block, "text"):
-                return content_block.text
+    for attempt in range(MAX_RETRIES):
+        try:
+            message = client.messages.create(
+                model=model,
+                max_tokens=4096,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"{prompt}\n\n{text}",
+                    }
+                ],
+            )
 
-        return ""
+            # Extract text from response
+            if message.content and len(message.content) > 0:
+                content_block = message.content[0]
+                if hasattr(content_block, "text"):
+                    return content_block.text
 
-    except (APIConnectionError, AuthenticationError) as e:
-        raise ClaudeAPIUnavailableError(f"Claude API unavailable: {e}") from e
-    except APIError as e:
-        raise ClaudeAPIError(f"Claude API error: {e}") from e
+            return ""
+
+        except RateLimitError as e:
+            # Rate limit errors should abort immediately
+            _display_warning(
+                f"Claude API rate limit exceeded: {e}. "
+                "Please check your API usage limits and try again later."
+            )
+            raise ClaudeRateLimitError(f"Rate limit exceeded: {e}") from e
+
+        except (APIConnectionError, AuthenticationError) as e:
+            last_error = e
+            if attempt < MAX_RETRIES - 1:
+                _display_warning(
+                    f"Claude API connection error (attempt {attempt + 1}/{MAX_RETRIES}): {e}. "
+                    f"Retrying in {RETRY_DELAY_SECONDS} seconds..."
+                )
+                time.sleep(RETRY_DELAY_SECONDS)
+            else:
+                raise ClaudeAPIUnavailableError(
+                    f"Claude API unavailable after {MAX_RETRIES} attempts: {e}"
+                ) from e
+
+        except APIStatusError as e:
+            # Server errors (5xx) should be retried
+            if e.status_code >= 500:
+                last_error = e
+                if attempt < MAX_RETRIES - 1:
+                    _display_warning(
+                        f"Claude API server error (attempt {attempt + 1}/{MAX_RETRIES}): {e}. "
+                        f"Retrying in {RETRY_DELAY_SECONDS} seconds..."
+                    )
+                    time.sleep(RETRY_DELAY_SECONDS)
+                else:
+                    raise ClaudeAPIUnavailableError(
+                        f"Claude API unavailable after {MAX_RETRIES} attempts: {e}"
+                    ) from e
+            else:
+                # Client errors (4xx) should not be retried
+                raise ClaudeAPIError(f"Claude API error: {e}") from e
+
+        except APIError as e:
+            raise ClaudeAPIError(f"Claude API error: {e}") from e
+
+    # Should not reach here, but just in case
+    if last_error:
+        raise ClaudeAPIUnavailableError(
+            f"Claude API unavailable after {MAX_RETRIES} attempts: {last_error}"
+        ) from last_error
+    raise ClaudeAPIError("Unknown error occurred")
 
 
 def _parse_advertisement_response(response: str) -> list[tuple[int, int]]:
@@ -315,6 +385,9 @@ def analyze_content(
         AnalysisResult with summary, topics, keywords, and ad markers.
         Returns empty AnalysisResult if API is unavailable.
 
+    Raises:
+        ClaudeRateLimitError: If API rate limits are exceeded.
+
     Validates: Requirements 6.1, 6.4, 7.1
     """
     if not text.strip():
@@ -344,6 +417,9 @@ def analyze_content(
             model=model,
         )
         result.summary = summary_response.strip()
+    except ClaudeRateLimitError:
+        # Rate limit errors should propagate up
+        raise
     except ClaudeAPIUnavailableError as e:
         if warn_on_unavailable:
             _display_warning(
@@ -364,6 +440,8 @@ def analyze_content(
             model=model,
         )
         result.topics = _parse_topics_response(topics_response)
+    except ClaudeRateLimitError:
+        raise
     except ClaudeAPIError:
         pass
 
@@ -376,6 +454,8 @@ def analyze_content(
             model=model,
         )
         result.keywords = _parse_keywords_response(keywords_response)
+    except ClaudeRateLimitError:
+        raise
     except ClaudeAPIError:
         pass
 
@@ -388,6 +468,8 @@ def analyze_content(
             model=model,
         )
         result.ad_markers = _parse_advertisement_response(ad_response)
+    except ClaudeRateLimitError:
+        raise
     except ClaudeAPIError:
         pass
 
@@ -405,6 +487,7 @@ def detect_advertisements_safe(
 
     Unlike detect_advertisements(), this function catches API unavailability
     errors and returns an empty list instead of raising an exception.
+    Rate limit errors are still raised to abort processing.
 
     Args:
         text: The transcript text to analyze.
@@ -417,6 +500,9 @@ def detect_advertisements_safe(
         List of (start, end) tuples indicating advertisement positions.
         Returns empty list if API is unavailable.
 
+    Raises:
+        ClaudeRateLimitError: If API rate limits are exceeded.
+
     Validates: Requirements 6.1, 6.4
     """
     try:
@@ -426,6 +512,9 @@ def detect_advertisements_safe(
             prompts=prompts,
             model=model,
         )
+    except ClaudeRateLimitError:
+        # Rate limit errors should propagate
+        raise
     except ClaudeAPIUnavailableError as e:
         if warn_on_unavailable:
             _display_warning(
