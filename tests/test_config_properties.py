@@ -159,7 +159,7 @@ class TestConfigLoadingPriority:
                 config = load_config(
                     local_path=local_path,
                     global_path=global_path,
-                    auto_create_global=False,
+                    auto_create_local=False,
                 )
 
                 # Property: Local values SHALL be used for all keys present in local config
@@ -233,7 +233,7 @@ class TestConfigLoadingPriority:
                 config = load_config(
                     local_path=local_path,
                     global_path=global_path,
-                    auto_create_global=False,
+                    auto_create_local=False,
                 )
 
                 # Property: Local whisper model SHALL be used
@@ -279,7 +279,7 @@ class TestConfigLoadingPriority:
                 config = load_config(
                     local_path=local_path,
                     global_path=global_path,
-                    auto_create_global=False,
+                    auto_create_local=False,
                 )
 
                 # Property: Local temp_storage SHALL be used
@@ -349,7 +349,7 @@ class TestEnvironmentVariablePrecedence:
                 config = load_config(
                     local_path=local_path,
                     global_path=global_path,
-                    auto_create_global=False,
+                    auto_create_local=False,
                 )
 
                 # Property: get_anthropic_key() SHALL return env var value V
@@ -409,7 +409,7 @@ class TestEnvironmentVariablePrecedence:
                 config = load_config(
                     local_path=local_path,
                     global_path=global_path,
-                    auto_create_global=False,
+                    auto_create_local=False,
                 )
 
                 # Property: get_anthropic_key() SHALL return env var value V
@@ -463,7 +463,7 @@ class TestEnvironmentVariablePrecedence:
                 config = load_config(
                     local_path=local_path,
                     global_path=global_path,
-                    auto_create_global=False,
+                    auto_create_local=False,
                 )
 
                 # Property: get_anthropic_key() SHALL return env var value V
@@ -513,7 +513,7 @@ class TestEnvironmentVariablePrecedence:
                 config = load_config(
                     local_path=local_path,
                     global_path=global_path,
-                    auto_create_global=False,
+                    auto_create_local=False,
                 )
 
                 # When env var is not set, config value SHALL be used

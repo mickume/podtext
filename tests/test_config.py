@@ -47,7 +47,7 @@ class TestConfigLoading:
         config = load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=False,
+            auto_create_local=False,
         )
 
         assert config.api.anthropic_key == ""
@@ -73,7 +73,7 @@ model = "small"
         config = load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=False,
+            auto_create_local=False,
         )
 
         assert config.api.anthropic_key == "global-key"
@@ -96,7 +96,7 @@ temp_storage = true
         config = load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=False,
+            auto_create_local=False,
         )
 
         assert config.storage.media_dir == "/custom/media/"
@@ -137,7 +137,7 @@ model = "large"
         config = load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=False,
+            auto_create_local=False,
         )
 
         # Local should override global for whisper.model
@@ -168,7 +168,7 @@ media_dir = "/local/media/"
         config = load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=False,
+            auto_create_local=False,
         )
 
         # Local should override only media_dir
@@ -201,7 +201,7 @@ anthropic_key = "config-key"
             config = load_config(
                 local_path=local_path,
                 global_path=global_path,
-                auto_create_global=False,
+                auto_create_local=False,
             )
 
             # get_anthropic_key should return env var value
@@ -225,7 +225,7 @@ anthropic_key = "config-key"
         config = load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=False,
+            auto_create_local=False,
         )
 
         assert config.get_anthropic_key() == "config-key"
@@ -247,7 +247,7 @@ anthropic_key = "config-key"
             config = load_config(
                 local_path=local_path,
                 global_path=global_path,
-                auto_create_global=False,
+                auto_create_local=False,
             )
 
             # Empty env var should fall back to config
@@ -256,68 +256,100 @@ anthropic_key = "config-key"
             del os.environ["ANTHROPIC_API_KEY"]
 
 
-class TestAutoCreateGlobalConfig:
-    """Tests for auto-creating global config.
+class TestAutoCreateLocalConfig:
+    """Tests for auto-creating local config.
 
     Validates: Requirements 8.3
     """
 
-    def test_auto_create_global_config(self, temp_config_dir: Path, clean_env: None) -> None:
-        """Test that global config is auto-created with defaults."""
+    def test_auto_create_local_config_when_no_config_exists(
+        self, temp_config_dir: Path, clean_env: None
+    ) -> None:
+        """Test that local config is auto-created when no config exists."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
 
+        assert not local_path.exists()
         assert not global_path.exists()
 
         load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=True,
+            auto_create_local=True,
         )
 
-        assert global_path.exists()
-        content = global_path.read_text()
+        # Local config should be created
+        assert local_path.exists()
+        # Global config should NOT be created
+        assert not global_path.exists()
+
+        content = local_path.read_text()
         assert "[api]" in content
         assert "[storage]" in content
         assert "[whisper]" in content
 
     def test_no_auto_create_when_disabled(self, temp_config_dir: Path, clean_env: None) -> None:
-        """Test that global config is not created when auto_create is False."""
+        """Test that local config is not created when auto_create is False."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
 
+        assert not local_path.exists()
         assert not global_path.exists()
 
         load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=False,
+            auto_create_local=False,
         )
 
+        assert not local_path.exists()
         assert not global_path.exists()
 
-    def test_existing_global_config_not_overwritten(
+    def test_no_auto_create_when_global_config_exists(
         self, temp_config_dir: Path, clean_env: None
     ) -> None:
-        """Test that existing global config is not overwritten."""
+        """Test that local config is not created when global config exists."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
         global_path.parent.mkdir(parents=True)
+
+        global_path.write_text("""
+[api]
+anthropic_key = "global-key"
+""")
+
+        load_config(
+            local_path=local_path,
+            global_path=global_path,
+            auto_create_local=True,
+        )
+
+        # Local config should NOT be created when global exists
+        assert not local_path.exists()
+        assert global_path.exists()
+
+    def test_existing_local_config_not_overwritten(
+        self, temp_config_dir: Path, clean_env: None
+    ) -> None:
+        """Test that existing local config is not overwritten."""
+        local_path = temp_config_dir / "local" / "config"
+        global_path = temp_config_dir / "global" / "config"
+        local_path.parent.mkdir(parents=True)
 
         original_content = """
 [api]
 anthropic_key = "my-custom-key"
 """
-        global_path.write_text(original_content)
+        local_path.write_text(original_content)
 
         load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=True,
+            auto_create_local=True,
         )
 
         # Content should not be changed
-        assert global_path.read_text() == original_content
+        assert local_path.read_text() == original_content
 
 
 class TestConfigValidation:
@@ -338,7 +370,7 @@ model = "invalid-model"
             load_config(
                 local_path=local_path,
                 global_path=global_path,
-                auto_create_global=False,
+                auto_create_local=False,
             )
 
         assert "Invalid whisper model" in str(exc_info.value)
@@ -356,7 +388,7 @@ model = "invalid-model"
             load_config(
                 local_path=local_path,
                 global_path=global_path,
-                auto_create_global=False,
+                auto_create_local=False,
             )
 
         assert "Invalid TOML" in str(exc_info.value)
@@ -378,7 +410,7 @@ model = "{model}"
             config = load_config(
                 local_path=local_path,
                 global_path=global_path,
-                auto_create_global=False,
+                auto_create_local=False,
             )
 
             assert config.whisper.model == model

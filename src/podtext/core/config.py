@@ -126,19 +126,19 @@ model = "base"
 """
 
 
-def _ensure_global_config_exists(global_path: Path) -> None:
-    """Create global config file with defaults if it doesn't exist.
+def _ensure_local_config_exists(local_path: Path) -> None:
+    """Create local config file with defaults if it doesn't exist.
 
     Args:
-        global_path: Path to the global config file.
+        local_path: Path to the local config file.
 
     Validates: Requirements 8.3
     """
-    if not global_path.exists():
+    if not local_path.exists():
         # Create parent directory if needed
-        global_path.parent.mkdir(parents=True, exist_ok=True)
+        local_path.parent.mkdir(parents=True, exist_ok=True)
         # Write default configuration
-        global_path.write_text(_generate_default_config_toml())
+        local_path.write_text(_generate_default_config_toml())
 
 
 def _load_toml_file(path: Path) -> dict[str, Any]:
@@ -246,7 +246,7 @@ def _dict_to_config(config_dict: dict[str, Any]) -> Config:
 def load_config(
     local_path: Path | None = None,
     global_path: Path | None = None,
-    auto_create_global: bool = True,
+    auto_create_local: bool = True,
 ) -> Config:
     """Load configuration from local and global config files.
 
@@ -255,13 +255,16 @@ def load_config(
     2. Global config file ($HOME/.podtext/config)
     3. Default values
 
+    If no configuration exists, creates local config with defaults.
+    Global config is never auto-created and must be set up manually by the user.
+
     Environment variable ANTHROPIC_API_KEY always takes precedence
     over config file values when accessed via Config.get_anthropic_key().
 
     Args:
         local_path: Override path for local config file.
         global_path: Override path for global config file.
-        auto_create_global: If True, create global config with defaults if missing.
+        auto_create_local: If True, create local config with defaults if no config exists.
 
     Returns:
         Config object with merged configuration values.
@@ -273,10 +276,6 @@ def load_config(
     """
     local_path = local_path or LOCAL_CONFIG_PATH
     global_path = global_path or GLOBAL_CONFIG_PATH
-
-    # Auto-create global config if it doesn't exist (Requirement 8.3)
-    if auto_create_global:
-        _ensure_global_config_exists(global_path)
 
     # Start with defaults
     merged_config = DEFAULT_CONFIG.copy()
@@ -295,6 +294,10 @@ def load_config(
     local_config = _load_toml_file(local_path)
     if local_config:
         merged_config = _deep_merge(merged_config, local_config)
+
+    # Auto-create local config if no config exists anywhere (Requirement 8.3)
+    if auto_create_local and not local_config and not global_config:
+        _ensure_local_config_exists(local_path)
 
     # Validate the merged configuration
     _validate_config(merged_config)

@@ -23,7 +23,7 @@ setup:
 
 # Remove all Python test/runtime artifacts
 cleanup:
-	rm -rf .venv
+	#rm -rf .venv
 	rm -rf .mypy_cache
 	rm -rf .pytest_cache
 	rm -rf .ruff_cache
