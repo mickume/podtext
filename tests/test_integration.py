@@ -414,26 +414,28 @@ class TestConfigFileCreation:
     Validates: Requirement 10.4
     """
 
-    def test_global_config_auto_created(self, temp_config_dir: Path, clean_env: None) -> None:
-        """Test that global config is auto-created with defaults on first run."""
+    def test_local_config_auto_created(self, temp_config_dir: Path, clean_env: None) -> None:
+        """Test that local config is auto-created when no config exists."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
 
+        assert not local_path.exists()
         assert not global_path.exists()
 
         config = load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=True,
+            auto_create_local=True,
         )
 
         # Config should be loaded with defaults
         assert config.whisper.model == "base"
         assert config.storage.temp_storage is False
 
-        # Global config file should be created
-        assert global_path.exists()
-        content = global_path.read_text()
+        # Local config file should be created, not global
+        assert local_path.exists()
+        assert not global_path.exists()
+        content = local_path.read_text()
         assert "[api]" in content
         assert "[storage]" in content
         assert "[whisper]" in content
@@ -456,7 +458,7 @@ model = "large"
         config = load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=True,
+            auto_create_local=True,
         )
 
         # Config should use existing values
@@ -489,7 +491,7 @@ model = "large"
         config = load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=False,
+            auto_create_local=False,
         )
 
         # Local should override global
@@ -986,7 +988,7 @@ anthropic_key = "config-file-key"
             config = load_config(
                 local_path=local_path,
                 global_path=global_path,
-                auto_create_global=False,
+                auto_create_local=False,
             )
 
             # get_anthropic_key should return env var value
@@ -1010,7 +1012,7 @@ anthropic_key = "config-file-key"
         config = load_config(
             local_path=local_path,
             global_path=global_path,
-            auto_create_global=False,
+            auto_create_local=False,
         )
 
         assert config.get_anthropic_key() == "config-file-key"
