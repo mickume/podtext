@@ -642,3 +642,242 @@ class TestPromptsIntegration:
         call_args = mock_client.messages.create.call_args
         messages = call_args.kwargs["messages"]
         assert "Custom ad detection prompt" in messages[0]["content"]
+
+
+class TestRetryLogic:
+    """Tests for API retry logic with exponential backoff."""
+
+    @patch("podtext.services.claude._create_client")
+    @patch("podtext.services.claude.time.sleep")
+    def test_retries_on_connection_error(
+        self, mock_sleep: MagicMock, mock_create_client: MagicMock
+    ) -> None:
+        """Test that connection errors trigger retries."""
+        mock_client = MagicMock()
+        mock_create_client.return_value = mock_client
+
+        # Fail twice, then succeed
+        mock_client.messages.create.side_effect = [
+            APIConnectionError(request=MagicMock()),
+            APIConnectionError(request=MagicMock()),
+            MagicMock(content=[MagicMock(text='{"advertisements": []}')]),
+        ]
+
+        prompts = Prompts()
+        result = detect_advertisements(
+            text="Some transcript",
+            api_key="test-key",
+            prompts=prompts,
+        )
+
+        # Should have retried twice and succeeded on third attempt
+        assert mock_client.messages.create.call_count == 3
+        assert mock_sleep.call_count == 2
+        assert result == []
+
+    @patch("podtext.services.claude._create_client")
+    @patch("podtext.services.claude.time.sleep")
+    def test_fails_after_max_retries(
+        self, mock_sleep: MagicMock, mock_create_client: MagicMock
+    ) -> None:
+        """Test that API fails after maximum retries."""
+        mock_client = MagicMock()
+        mock_create_client.return_value = mock_client
+
+        # Fail all attempts
+        mock_client.messages.create.side_effect = APIConnectionError(request=MagicMock())
+
+        prompts = Prompts()
+        with pytest.raises(ClaudeAPIUnavailableError) as exc_info:
+            detect_advertisements(
+                text="Some transcript",
+                api_key="test-key",
+                prompts=prompts,
+            )
+
+        # Should have tried 3 times
+        assert mock_client.messages.create.call_count == 3
+        assert mock_sleep.call_count == 2
+        assert "after 3 attempts" in str(exc_info.value)
+
+    @patch("podtext.services.claude._create_client")
+    @patch("podtext.services.claude.time.sleep")
+    def test_retry_delay(
+        self, mock_sleep: MagicMock, mock_create_client: MagicMock
+    ) -> None:
+        """Test that retry delay is applied correctly."""
+        from podtext.services.claude import RETRY_DELAY_SECONDS
+
+        mock_client = MagicMock()
+        mock_create_client.return_value = mock_client
+
+        # Fail once, then succeed
+        mock_client.messages.create.side_effect = [
+            APIConnectionError(request=MagicMock()),
+            MagicMock(content=[MagicMock(text='{"advertisements": []}')]),
+        ]
+
+        prompts = Prompts()
+        detect_advertisements(
+            text="Some transcript",
+            api_key="test-key",
+            prompts=prompts,
+        )
+
+        # Should have slept for the configured delay
+        mock_sleep.assert_called_once_with(RETRY_DELAY_SECONDS)
+
+
+class TestRateLimitHandling:
+    """Tests for API rate limit handling."""
+
+    @patch("podtext.services.claude._create_client")
+    def test_rate_limit_error_aborts_immediately(
+        self, mock_create_client: MagicMock, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Test that rate limit errors abort without retrying."""
+        from anthropic import RateLimitError
+        from podtext.services.claude import ClaudeRateLimitError
+
+        mock_client = MagicMock()
+        mock_create_client.return_value = mock_client
+
+        # Simulate rate limit error
+        mock_client.messages.create.side_effect = RateLimitError(
+            message="Rate limit exceeded",
+            response=MagicMock(),
+            body=None,
+        )
+
+        prompts = Prompts()
+        with pytest.raises(ClaudeRateLimitError) as exc_info:
+            detect_advertisements(
+                text="Some transcript",
+                api_key="test-key",
+                prompts=prompts,
+            )
+
+        # Should have tried only once (no retries)
+        assert mock_client.messages.create.call_count == 1
+        assert "Rate limit exceeded" in str(exc_info.value)
+
+        # Should have displayed warning
+        captured = capsys.readouterr()
+        assert "Warning" in captured.err
+        assert "rate limit" in captured.err.lower()
+
+    @patch("podtext.services.claude._create_client")
+    def test_rate_limit_propagates_in_analyze_content(
+        self, mock_create_client: MagicMock
+    ) -> None:
+        """Test that rate limit errors propagate from analyze_content."""
+        from anthropic import RateLimitError
+        from podtext.services.claude import ClaudeRateLimitError
+
+        mock_client = MagicMock()
+        mock_create_client.return_value = mock_client
+
+        mock_client.messages.create.side_effect = RateLimitError(
+            message="Rate limit exceeded",
+            response=MagicMock(),
+            body=None,
+        )
+
+        prompts = Prompts()
+        with pytest.raises(ClaudeRateLimitError):
+            analyze_content(
+                text="Some transcript",
+                api_key="test-key",
+                prompts=prompts,
+            )
+
+    @patch("podtext.services.claude._create_client")
+    def test_rate_limit_propagates_in_detect_advertisements_safe(
+        self, mock_create_client: MagicMock
+    ) -> None:
+        """Test that rate limit errors propagate from detect_advertisements_safe."""
+        from anthropic import RateLimitError
+        from podtext.services.claude import ClaudeRateLimitError
+
+        mock_client = MagicMock()
+        mock_create_client.return_value = mock_client
+
+        mock_client.messages.create.side_effect = RateLimitError(
+            message="Rate limit exceeded",
+            response=MagicMock(),
+            body=None,
+        )
+
+        prompts = Prompts()
+        with pytest.raises(ClaudeRateLimitError):
+            detect_advertisements_safe(
+                text="Some transcript",
+                api_key="test-key",
+                prompts=prompts,
+            )
+
+
+class TestServerErrorRetry:
+    """Tests for server error (5xx) retry logic."""
+
+    @patch("podtext.services.claude._create_client")
+    @patch("podtext.services.claude.time.sleep")
+    def test_retries_on_server_error(
+        self, mock_sleep: MagicMock, mock_create_client: MagicMock
+    ) -> None:
+        """Test that 5xx server errors trigger retries."""
+        from anthropic import APIStatusError
+
+        mock_client = MagicMock()
+        mock_create_client.return_value = mock_client
+
+        # Fail with 500 error, then succeed
+        mock_client.messages.create.side_effect = [
+            APIStatusError(
+                message="Internal server error",
+                response=MagicMock(status_code=500),
+                body=None,
+            ),
+            MagicMock(content=[MagicMock(text='{"advertisements": []}')]),
+        ]
+
+        prompts = Prompts()
+        result = detect_advertisements(
+            text="Some transcript",
+            api_key="test-key",
+            prompts=prompts,
+        )
+
+        # Should have retried once and succeeded
+        assert mock_client.messages.create.call_count == 2
+        assert mock_sleep.call_count == 1
+        assert result == []
+
+    @patch("podtext.services.claude._create_client")
+    def test_no_retry_on_client_error(
+        self, mock_create_client: MagicMock
+    ) -> None:
+        """Test that 4xx client errors do not trigger retries."""
+        from anthropic import APIStatusError
+        from podtext.services.claude import ClaudeAPIError
+
+        mock_client = MagicMock()
+        mock_create_client.return_value = mock_client
+
+        # Fail with 400 error
+        mock_client.messages.create.side_effect = APIStatusError(
+            message="Bad request",
+            response=MagicMock(status_code=400),
+            body=None,
+        )
+
+        prompts = Prompts()
+        with pytest.raises(ClaudeAPIError):
+            detect_advertisements(
+                text="Some transcript",
+                api_key="test-key",
+                prompts=prompts,
+            )
+
+        # Should have tried only once (no retries for 4xx)
+        assert mock_client.messages.create.call_count == 1
