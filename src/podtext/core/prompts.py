@@ -38,8 +38,9 @@ Respond in JSON format:
 Transcript:
 """
 
-DEFAULT_CONTENT_SUMMARY_PROMPT = """Summarize the following podcast transcript in 2-3 paragraphs.
-Focus on the main points discussed and key takeaways.
+DEFAULT_CONTENT_SUMMARY_PROMPT = """Summarize the following podcast transcript in 3-5 paragraphs, depending on the variety of topics. \
+Focus on the main points discussed and key takeaways. \
+Include enough details so that a reader can draw actual value and knowledge from. Give each paragraph a headline that describes the thesis of the paragraph.
 
 Transcript:
 """
@@ -56,8 +57,8 @@ Transcript:
 
 DEFAULT_KEYWORD_EXTRACTION_PROMPT = """Extract the most important keywords from the \
 following podcast transcript.
-Focus on key names, core concepts, technologies, and broader categories.
-Limit to 20 keywords maximum, prioritizing the most significant terms.
+Focus on broader categories, core concepts, and key names.
+Limit to 15-20 keywords maximum, prioritizing the most significant terms.
 
 Format your response as a JSON array of strings:
 ["keyword1", "keyword2", ...]
