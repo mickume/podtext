@@ -1,7 +1,7 @@
 stuff.md
 transcripts.md
 transcripts/** 
-.podtext/output/**
+.podtext/**
 mcp.json
 stuff/** 
 
