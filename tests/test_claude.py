@@ -18,11 +18,9 @@ from podtext.services.claude import (
     AnalysisResult,
     ClaudeAPIUnavailableError,
     _parse_advertisement_response,
-    _parse_keywords_response,
-    _parse_topics_response,
+    _parse_json_list_response,
     analyze_content,
     detect_advertisements,
-    detect_advertisements_safe,
 )
 
 
@@ -161,7 +159,7 @@ class TestParseTopicsResponse:
     def test_parse_valid_response(self) -> None:
         """Test parsing a valid JSON array response."""
         response = '["Topic 1: Description", "Topic 2: Another description"]'
-        result = _parse_topics_response(response)
+        result = _parse_json_list_response(response)
 
         assert result == ["Topic 1: Description", "Topic 2: Another description"]
 
@@ -171,28 +169,28 @@ class TestParseTopicsResponse:
         Here are the topics:
         ["Topic 1", "Topic 2"]
         """
-        result = _parse_topics_response(response)
+        result = _parse_json_list_response(response)
 
         assert result == ["Topic 1", "Topic 2"]
 
     def test_parse_empty_array(self) -> None:
         """Test parsing empty array."""
         response = "[]"
-        result = _parse_topics_response(response)
+        result = _parse_json_list_response(response)
 
         assert result == []
 
     def test_parse_invalid_json(self) -> None:
         """Test parsing invalid JSON returns empty list."""
         response = "Not valid JSON"
-        result = _parse_topics_response(response)
+        result = _parse_json_list_response(response)
 
         assert result == []
 
     def test_filter_empty_items(self) -> None:
         """Test that empty items are filtered out."""
         response = '["Topic 1", "", "Topic 2", null]'
-        result = _parse_topics_response(response)
+        result = _parse_json_list_response(response)
 
         # Empty string and null should be filtered
         assert "Topic 1" in result
@@ -206,7 +204,7 @@ class TestParseKeywordsResponse:
     def test_parse_valid_response(self) -> None:
         """Test parsing a valid JSON array response."""
         response = '["keyword1", "keyword2", "keyword3"]'
-        result = _parse_keywords_response(response)
+        result = _parse_json_list_response(response)
 
         assert result == ["keyword1", "keyword2", "keyword3"]
 
@@ -216,21 +214,21 @@ class TestParseKeywordsResponse:
         Keywords found:
         ["python", "podcast", "transcription"]
         """
-        result = _parse_keywords_response(response)
+        result = _parse_json_list_response(response)
 
         assert result == ["python", "podcast", "transcription"]
 
     def test_parse_empty_array(self) -> None:
         """Test parsing empty array."""
         response = "[]"
-        result = _parse_keywords_response(response)
+        result = _parse_json_list_response(response)
 
         assert result == []
 
     def test_parse_invalid_json(self) -> None:
         """Test parsing invalid JSON returns empty list."""
         response = "Not valid JSON"
-        result = _parse_keywords_response(response)
+        result = _parse_json_list_response(response)
 
         assert result == []
 
@@ -337,80 +335,6 @@ class TestDetectAdvertisements:
                 api_key="test-key",
                 prompts=prompts,
             )
-
-
-class TestDetectAdvertisementsSafe:
-    """Tests for the detect_advertisements_safe function.
-
-    Validates: Requirements 6.1, 6.4
-    """
-
-    def test_empty_text_returns_empty_list(self) -> None:
-        """Test that empty text returns empty list."""
-        result = detect_advertisements_safe(
-            text="",
-            api_key="test-key",
-        )
-
-        assert result == []
-
-    def test_missing_api_key_returns_empty_with_warning(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test that missing API key returns empty list with warning.
-
-        Validates: Requirements 6.4
-        """
-        result = detect_advertisements_safe(
-            text="Some transcript",
-            api_key="",
-            warn_on_unavailable=True,
-        )
-
-        assert result == []
-        captured = capsys.readouterr()
-        assert "Warning" in captured.err
-        assert "unavailable" in captured.err.lower()
-
-    def test_missing_api_key_no_warning_when_disabled(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test that warning can be disabled."""
-        prompts = Prompts()  # Provide prompts to avoid prompts file warning
-        result = detect_advertisements_safe(
-            text="Some transcript",
-            api_key="",
-            prompts=prompts,
-            warn_on_unavailable=False,
-        )
-
-        assert result == []
-        captured = capsys.readouterr()
-        assert captured.err == ""
-
-    @patch("podtext.services.claude._create_client")
-    def test_api_error_returns_empty_with_warning(
-        self, mock_create_client: MagicMock, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Test that API errors return empty list with warning.
-
-        Validates: Requirements 6.4
-        """
-        mock_client = MagicMock()
-        mock_create_client.return_value = mock_client
-        mock_client.messages.create.side_effect = APIConnectionError(request=MagicMock())
-
-        prompts = Prompts()
-        result = detect_advertisements_safe(
-            text="Some transcript",
-            api_key="test-key",
-            prompts=prompts,
-            warn_on_unavailable=True,
-        )
-
-        assert result == []
-        captured = capsys.readouterr()
-        assert "Warning" in captured.err
 
 
 class TestAnalyzeContent:
@@ -790,32 +714,6 @@ class TestRateLimitHandling:
                 api_key="test-key",
                 prompts=prompts,
             )
-
-    @patch("podtext.services.claude._create_client")
-    def test_rate_limit_propagates_in_detect_advertisements_safe(
-        self, mock_create_client: MagicMock
-    ) -> None:
-        """Test that rate limit errors propagate from detect_advertisements_safe."""
-        from anthropic import RateLimitError
-        from podtext.services.claude import ClaudeRateLimitError
-
-        mock_client = MagicMock()
-        mock_create_client.return_value = mock_client
-
-        mock_client.messages.create.side_effect = RateLimitError(
-            message="Rate limit exceeded",
-            response=MagicMock(),
-            body=None,
-        )
-
-        prompts = Prompts()
-        with pytest.raises(ClaudeRateLimitError):
-            detect_advertisements_safe(
-                text="Some transcript",
-                api_key="test-key",
-                prompts=prompts,
-            )
-
 
 class TestServerErrorRetry:
     """Tests for server error (5xx) retry logic."""

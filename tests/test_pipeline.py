@@ -18,7 +18,6 @@ from podtext.core.pipeline import (
     MediaDownloadError,
     PipelineResult,
     PipelineWarning,
-    TranscriptionPipeline,
     TranscriptionPipelineError,
     _generate_output_path,
     run_pipeline,
@@ -478,94 +477,6 @@ class TestRunPipelineSafe:
         mock_run.side_effect = TranscriptionPipelineError("Transcription failed")
 
         result = run_pipeline_safe(episode=sample_episode, config=sample_config)
-
-        assert result is None
-
-
-class TestTranscriptionPipelineClass:
-    """Tests for TranscriptionPipeline class."""
-
-    @patch("podtext.core.pipeline.run_pipeline")
-    def test_process_calls_run_pipeline(
-        self,
-        mock_run: MagicMock,
-        sample_episode: EpisodeInfo,
-        sample_config: Config,
-        tmp_path: Path,
-    ) -> None:
-        """Test that process() calls run_pipeline with correct args."""
-        expected_result = PipelineResult(
-            output_path=tmp_path / "output.md",
-            transcription=TranscriptionResult(text="Test", paragraphs=[], language="en"),
-            analysis=AnalysisResult(),
-        )
-        mock_run.return_value = expected_result
-
-        pipeline = TranscriptionPipeline(
-            config=sample_config,
-            skip_language_check=True,
-            podcast_name="Test Podcast",
-        )
-        result = pipeline.process(sample_episode)
-
-        assert result == expected_result
-        mock_run.assert_called_once_with(
-            episode=sample_episode,
-            config=sample_config,
-            skip_language_check=True,
-            podcast_name="Test Podcast",
-            output_path=None,
-        )
-
-    @patch("podtext.core.pipeline.run_pipeline")
-    def test_process_allows_overrides(
-        self,
-        mock_run: MagicMock,
-        sample_episode: EpisodeInfo,
-        sample_config: Config,
-        tmp_path: Path,
-    ) -> None:
-        """Test that process() allows overriding default settings."""
-        expected_result = PipelineResult(
-            output_path=tmp_path / "output.md",
-            transcription=TranscriptionResult(text="Test", paragraphs=[], language="en"),
-            analysis=AnalysisResult(),
-        )
-        mock_run.return_value = expected_result
-
-        pipeline = TranscriptionPipeline(
-            config=sample_config,
-            skip_language_check=False,
-            podcast_name="Default Podcast",
-        )
-        custom_output = tmp_path / "custom.md"
-        pipeline.process(
-            sample_episode,
-            skip_language_check=True,
-            podcast_name="Override Podcast",
-            output_path=custom_output,
-        )
-
-        mock_run.assert_called_once_with(
-            episode=sample_episode,
-            config=sample_config,
-            skip_language_check=True,
-            podcast_name="Override Podcast",
-            output_path=custom_output,
-        )
-
-    @patch("podtext.core.pipeline.run_pipeline_safe")
-    def test_process_safe_returns_none_on_error(
-        self,
-        mock_run: MagicMock,
-        sample_episode: EpisodeInfo,
-        sample_config: Config,
-    ) -> None:
-        """Test that process_safe() returns None on error."""
-        mock_run.return_value = None
-
-        pipeline = TranscriptionPipeline(config=sample_config)
-        result = pipeline.process_safe(sample_episode)
 
         assert result is None
 

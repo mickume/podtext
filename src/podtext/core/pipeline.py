@@ -8,11 +8,11 @@ Requirements: 3.1, 4.1, 6.1, 7.1
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from podtext.core.config import Config, load_config
+from podtext.core.log import error as display_error, warn as display_warning
 from podtext.core.output import generate_markdown
 from podtext.core.processor import sanitize_path_component
 from podtext.services.claude import (
@@ -121,24 +121,6 @@ def _generate_output_path(
     return output_dir / safe_podcast / f"{safe_title}.md"
 
 
-def _display_warning(message: str) -> None:
-    """Display a warning message to stderr.
-
-    Args:
-        message: Warning message to display.
-    """
-    print(f"Warning: {message}", file=sys.stderr)
-
-
-def _display_error(message: str) -> None:
-    """Display an error message to stderr.
-
-    Args:
-        message: Error message to display.
-    """
-    print(f"Error: {message}", file=sys.stderr)
-
-
 def run_pipeline(
     episode: EpisodeInfo,
     config: Config | None = None,
@@ -231,7 +213,7 @@ def run_pipeline(
                         )
 
                 except ClaudeAPIUnavailableError as e:
-                    _display_warning(
+                    display_warning(
                         f"Claude API unavailable: {e}. "
                         "Transcript will be output without AI analysis."
                     )
@@ -244,7 +226,7 @@ def run_pipeline(
                     analysis = AnalysisResult()
 
                 except ClaudeAPIError as e:
-                    _display_warning(
+                    display_warning(
                         f"Claude API error: {e}. Transcript will be output without AI analysis."
                     )
                     warnings.append(
@@ -255,7 +237,7 @@ def run_pipeline(
                     )
                     analysis = AnalysisResult()
             else:
-                _display_warning(
+                display_warning(
                     "Anthropic API key not configured. "
                     "Transcript will be output without AI analysis."
                 )
@@ -328,104 +310,13 @@ def run_pipeline_safe(
             output_path=output_path,
         )
     except MediaDownloadError as e:
-        _display_error(str(e))
+        display_error(str(e))
         return None
     except TranscriptionPipelineError as e:
-        _display_error(str(e))
+        display_error(str(e))
         return None
     except Exception as e:
-        _display_error(f"Unexpected error: {e}")
+        display_error(f"Unexpected error: {e}")
         return None
 
 
-class TranscriptionPipeline:
-    """Class-based interface for the transcription pipeline.
-
-    Provides a reusable pipeline instance with configuration.
-    Useful for processing multiple episodes with the same settings.
-
-    Example:
-        >>> config = load_config()
-        >>> pipeline = TranscriptionPipeline(config)
-        >>> result = pipeline.process(episode)
-        >>> print(f"Output: {result.output_path}")
-    """
-
-    def __init__(
-        self,
-        config: Config | None = None,
-        skip_language_check: bool = False,
-        podcast_name: str = "",
-    ) -> None:
-        """Initialize the pipeline with configuration.
-
-        Args:
-            config: Application configuration. If None, loads from default paths.
-            skip_language_check: Default setting for language check bypass.
-            podcast_name: Default podcast name for frontmatter.
-        """
-        self.config = config if config is not None else load_config()
-        self.skip_language_check = skip_language_check
-        self.podcast_name = podcast_name
-
-    def process(
-        self,
-        episode: EpisodeInfo,
-        output_path: Path | None = None,
-        skip_language_check: bool | None = None,
-        podcast_name: str | None = None,
-    ) -> PipelineResult:
-        """Process an episode through the pipeline.
-
-        Args:
-            episode: Episode information from RSS feed.
-            output_path: Optional custom output path.
-            skip_language_check: Override default language check setting.
-            podcast_name: Override default podcast name.
-
-        Returns:
-            PipelineResult with output path and metadata.
-
-        Raises:
-            MediaDownloadError: If media download fails.
-            TranscriptionPipelineError: If transcription fails.
-        """
-        return run_pipeline(
-            episode=episode,
-            config=self.config,
-            skip_language_check=(
-                skip_language_check if skip_language_check is not None else self.skip_language_check
-            ),
-            podcast_name=podcast_name if podcast_name is not None else self.podcast_name,
-            output_path=output_path,
-        )
-
-    def process_safe(
-        self,
-        episode: EpisodeInfo,
-        output_path: Path | None = None,
-        skip_language_check: bool | None = None,
-        podcast_name: str | None = None,
-    ) -> PipelineResult | None:
-        """Process an episode with error handling.
-
-        Same as process() but returns None on failure instead of raising.
-
-        Args:
-            episode: Episode information from RSS feed.
-            output_path: Optional custom output path.
-            skip_language_check: Override default language check setting.
-            podcast_name: Override default podcast name.
-
-        Returns:
-            PipelineResult on success, None on failure.
-        """
-        return run_pipeline_safe(
-            episode=episode,
-            config=self.config,
-            skip_language_check=(
-                skip_language_check if skip_language_check is not None else self.skip_language_check
-            ),
-            podcast_name=podcast_name if podcast_name is not None else self.podcast_name,
-            output_path=output_path,
-        )

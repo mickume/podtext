@@ -9,7 +9,6 @@ Requirements: 6.1, 6.4, 7.1
 from __future__ import annotations
 
 import json
-import sys
 import time
 from dataclasses import dataclass, field
 
@@ -22,6 +21,7 @@ from anthropic import (
     RateLimitError,
 )
 
+from podtext.core.log import warn as _warn
 from podtext.core.prompts import Prompts, load_prompts
 
 # Default Claude model to use
@@ -68,15 +68,6 @@ class AnalysisResult:
     topics: list[str] = field(default_factory=list)
     keywords: list[str] = field(default_factory=list)
     ad_markers: list[tuple[int, int]] = field(default_factory=list)  # start, end positions
-
-
-def _display_warning(message: str) -> None:
-    """Display a warning message to stderr.
-
-    Args:
-        message: Warning message to display.
-    """
-    print(f"Warning: {message}", file=sys.stderr)
 
 
 def _create_client(api_key: str) -> anthropic.Anthropic:
@@ -149,7 +140,7 @@ def _call_claude(
 
         except RateLimitError as e:
             # Rate limit errors should abort immediately
-            _display_warning(
+            _warn(
                 f"Claude API rate limit exceeded: {e}. "
                 "Please check your API usage limits and try again later."
             )
@@ -158,7 +149,7 @@ def _call_claude(
         except (APIConnectionError, AuthenticationError) as e:
             last_error = e
             if attempt < MAX_RETRIES - 1:
-                _display_warning(
+                _warn(
                     f"Claude API connection error (attempt {attempt + 1}/{MAX_RETRIES}): {e}. "
                     f"Retrying in {RETRY_DELAY_SECONDS} seconds..."
                 )
@@ -173,7 +164,7 @@ def _call_claude(
             if e.status_code >= 500:
                 last_error = e
                 if attempt < MAX_RETRIES - 1:
-                    _display_warning(
+                    _warn(
                         f"Claude API server error (attempt {attempt + 1}/{MAX_RETRIES}): {e}. "
                         f"Retrying in {RETRY_DELAY_SECONDS} seconds..."
                     )
@@ -254,57 +245,26 @@ def _parse_advertisement_response(response: str) -> list[tuple[int, int]]:
         return []
 
 
-def _parse_topics_response(response: str) -> list[str]:
-    """Parse topic extraction response from Claude.
+def _parse_json_list_response(response: str) -> list[str]:
+    """Parse a JSON array of strings from a Claude response.
 
-    Expects JSON array format: ["Topic 1: description", ...]
+    Extracts the first JSON array found in the response text.
+    Used for both topic and keyword extraction responses.
 
     Args:
         response: Claude's response text.
 
     Returns:
-        List of topic strings.
+        List of strings from the JSON array.
     """
     try:
-        # Try to extract JSON array from response
         json_start = response.find("[")
         json_end = response.rfind("]") + 1
 
         if json_start == -1 or json_end == 0:
             return []
 
-        json_str = response[json_start:json_end]
-        data = json.loads(json_str)
-
-        if isinstance(data, list):
-            return [str(item) for item in data if item]
-        return []
-
-    except (json.JSONDecodeError, TypeError):
-        return []
-
-
-def _parse_keywords_response(response: str) -> list[str]:
-    """Parse keyword extraction response from Claude.
-
-    Expects JSON array format: ["keyword1", "keyword2", ...]
-
-    Args:
-        response: Claude's response text.
-
-    Returns:
-        List of keyword strings.
-    """
-    try:
-        # Try to extract JSON array from response
-        json_start = response.find("[")
-        json_end = response.rfind("]") + 1
-
-        if json_start == -1 or json_end == 0:
-            return []
-
-        json_str = response[json_start:json_end]
-        data = json.loads(json_str)
+        data = json.loads(response[json_start:json_end])
 
         if isinstance(data, list):
             return [str(item) for item in data if item]
@@ -401,7 +361,7 @@ def analyze_content(
         client = _create_client(api_key)
     except ClaudeAPIUnavailableError as e:
         if warn_on_unavailable:
-            _display_warning(
+            _warn(
                 f"Claude API unavailable: {e}. Transcript will be output without AI analysis."
             )
         return AnalysisResult()
@@ -422,7 +382,7 @@ def analyze_content(
         raise
     except ClaudeAPIUnavailableError as e:
         if warn_on_unavailable:
-            _display_warning(
+            _warn(
                 f"Claude API unavailable during summary: {e}. "
                 "Transcript will be output without AI analysis."
             )
@@ -430,7 +390,7 @@ def analyze_content(
     except ClaudeAPIError as e:
         # API errors (e.g., insufficient credits, invalid requests) should be reported
         if warn_on_unavailable:
-            _display_warning(
+            _warn(
                 f"Claude API error during summary: {e}. "
                 "Transcript will be output without AI analysis."
             )
@@ -444,12 +404,12 @@ def analyze_content(
             text=text,
             model=model,
         )
-        result.topics = _parse_topics_response(topics_response)
+        result.topics = _parse_json_list_response(topics_response)
     except ClaudeRateLimitError:
         raise
     except ClaudeAPIError as e:
         if warn_on_unavailable:
-            _display_warning(f"Claude API error during topic extraction: {e}")
+            _warn(f"Claude API error during topic extraction: {e}")
 
     # Get keywords
     try:
@@ -459,12 +419,12 @@ def analyze_content(
             text=text,
             model=model,
         )
-        result.keywords = _parse_keywords_response(keywords_response)
+        result.keywords = _parse_json_list_response(keywords_response)
     except ClaudeRateLimitError:
         raise
     except ClaudeAPIError as e:
         if warn_on_unavailable:
-            _display_warning(f"Claude API error during keyword extraction: {e}")
+            _warn(f"Claude API error during keyword extraction: {e}")
 
     # Get advertisement markers
     try:
@@ -479,60 +439,8 @@ def analyze_content(
         raise
     except ClaudeAPIError as e:
         if warn_on_unavailable:
-            _display_warning(f"Claude API error during advertisement detection: {e}")
+            _warn(f"Claude API error during advertisement detection: {e}")
 
     return result
 
 
-def detect_advertisements_safe(
-    text: str,
-    api_key: str,
-    prompts: Prompts | None = None,
-    model: str = DEFAULT_MODEL,
-    warn_on_unavailable: bool = True,
-) -> list[tuple[int, int]]:
-    """Detect advertisements with graceful handling of API unavailability.
-
-    Unlike detect_advertisements(), this function catches API unavailability
-    errors and returns an empty list instead of raising an exception.
-    Rate limit errors are still raised to abort processing.
-
-    Args:
-        text: The transcript text to analyze.
-        api_key: Anthropic API key.
-        prompts: Optional Prompts object. If None, loads from file.
-        model: Claude model to use.
-        warn_on_unavailable: If True, display warning when API unavailable.
-
-    Returns:
-        List of (start, end) tuples indicating advertisement positions.
-        Returns empty list if API is unavailable.
-
-    Raises:
-        ClaudeRateLimitError: If API rate limits are exceeded.
-
-    Validates: Requirements 6.1, 6.4
-    """
-    try:
-        return detect_advertisements(
-            text=text,
-            api_key=api_key,
-            prompts=prompts,
-            model=model,
-        )
-    except ClaudeRateLimitError:
-        # Rate limit errors should propagate
-        raise
-    except ClaudeAPIUnavailableError as e:
-        if warn_on_unavailable:
-            _display_warning(
-                f"Claude API unavailable: {e}. "
-                "Transcript will be output without advertisement removal."
-            )
-        return []
-    except ClaudeAPIError as e:
-        if warn_on_unavailable:
-            _display_warning(
-                f"Claude API error: {e}. Transcript will be output without advertisement removal."
-            )
-        return []

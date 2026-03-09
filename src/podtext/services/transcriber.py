@@ -9,10 +9,11 @@ Requirements: 4.1, 4.2, 4.3, 5.1, 5.2, 5.3
 
 from __future__ import annotations
 
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+
+from podtext.core.log import warn as _warn
 
 # Try to import mlx_whisper, but allow graceful fallback for testing
 try:
@@ -172,17 +173,10 @@ def _detect_language(result: dict[str, Any]) -> str:
 
 
 def _warn_non_english(language: str) -> None:
-    """Display warning for non-English content.
-
-    Args:
-        language: The detected language code.
-
-    Validates: Requirements 5.2
-    """
-    print(
-        f"Warning: Detected language '{language}' is not English. "
-        "Transcription will continue, but results may vary.",
-        file=sys.stderr,
+    """Validates: Requirements 5.2"""
+    _warn(
+        f"Detected language '{language}' is not English. "
+        "Transcription will continue, but results may vary."
     )
 
 
@@ -287,13 +281,3 @@ def transcribe_with_config(
     return transcribe(audio_path, effective_model, skip_language_check)
 
 
-def handle_transcription_error(error: TranscriptionError) -> None:
-    """Display transcription error message and exit gracefully.
-
-    Args:
-        error: The transcription error that occurred.
-
-    Validates: Requirements 4.1
-    """
-    print(f"Error: {error}", file=sys.stderr)
-    sys.exit(1)

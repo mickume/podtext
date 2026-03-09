@@ -306,15 +306,3 @@ def load_config(
     return _dict_to_config(merged_config)
 
 
-def get_config() -> Config:
-    """Get the application configuration using default paths.
-
-    Convenience function that loads configuration from standard paths.
-
-    Returns:
-        Config object with merged configuration values.
-
-    Raises:
-        ConfigError: If configuration files are invalid.
-    """
-    return load_config()

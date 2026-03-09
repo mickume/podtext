@@ -9,9 +9,10 @@ Requirements: 9.1, 9.2, 9.3
 from __future__ import annotations
 
 import re
-import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+from podtext.core.log import warn as _warn
 
 # Default prompts file paths (same pattern as config)
 LOCAL_PROMPTS_PATH = Path(".podtext/prompts.md")
@@ -147,15 +148,6 @@ def _parse_prompts_markdown(content: str) -> dict[str, str]:
     return prompts
 
 
-def _display_warning(message: str) -> None:
-    """Display a warning message to stderr.
-
-    Args:
-        message: Warning message to display.
-    """
-    print(f"Warning: {message}", file=sys.stderr)
-
-
 def load_prompts(
     local_path: Path | None = None,
     global_path: Path | None = None,
@@ -208,7 +200,7 @@ def load_prompts(
         # Check if we got any valid prompts
         if not parsed_prompts:
             if warn_on_fallback:
-                _display_warning(
+                _warn(
                     f"Prompts file {prompts_path} is malformed (no valid sections found). "
                     "Using built-in default prompts."
                 )
@@ -230,27 +222,16 @@ def load_prompts(
 
     except OSError as e:
         if warn_on_fallback:
-            _display_warning(
+            _warn(
                 f"Could not read prompts file {prompts_path}: {e}. Using built-in default prompts."
             )
         return Prompts.defaults()
     except Exception as e:
         if warn_on_fallback:
-            _display_warning(
+            _warn(
                 f"Error parsing prompts file {prompts_path}: {e}. Using built-in default prompts."
             )
         return Prompts.defaults()
-
-
-def get_prompts() -> Prompts:
-    """Get prompts using default paths.
-
-    Convenience function that loads prompts from standard paths.
-
-    Returns:
-        Prompts object with loaded or default prompts.
-    """
-    return load_prompts()
 
 
 def generate_default_prompts_markdown() -> str:

@@ -9,7 +9,6 @@ Requirements: 3.1, 3.2, 3.3, 3.4
 from __future__ import annotations
 
 import hashlib
-import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -252,13 +251,3 @@ def download_with_optional_cleanup(
             cleanup_media_file(file_path)
 
 
-def handle_download_error(error: DownloadError) -> None:
-    """Display download error message and exit gracefully.
-
-    Args:
-        error: The download error that occurred.
-
-    Validates: Requirements 3.4
-    """
-    print(f"Error: {error}", file=sys.stderr)
-    sys.exit(1)
