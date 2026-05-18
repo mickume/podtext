@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "podtext"
-version = "1.0.0"
+version = "1.0.1"
 description = "CLI tool for podcast transcription and analysis using MLX-Whisper and Claude AI"
 readme = "README.md"
 license = "MIT"
