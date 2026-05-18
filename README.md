@@ -2,28 +2,35 @@
 
 A command-line tool that turns podcast episodes into searchable, structured markdown. It downloads audio from RSS feeds, transcribes it using MLX-Whisper (optimized for Apple Silicon), and enriches the output with AI-generated summaries, topics, keywords, and advertisement detection via Claude.
 
-## Requirements
-
-- macOS with Apple Silicon (M1/M2/M3/M4)
-- Python 3.13+
-- Anthropic API key (for AI analysis features -- transcription works without it)
-
 ## Installation
 
+Requires Apple Silicon, Python 3.13+, `uv` and a Anthropic API key.
+
+Install directly from the repository:
+
 ```bash
-git clone https://github.com/your-username/podtext.git
+uv tool install git+https://github.com/mickume/podtext.git
+```
+
+This installs the `podtext` command globally (in your active environment) without cloning the repo.
+
+### Install from a local clone
+
+```bash
+git clone https://github.com/mickume/podtext.git
 cd podtext
-
-# Using uv (recommended)
-uv sync
-
-# Or using pip
-python -m venv .venv
+uv venv
 source .venv/bin/activate
-pip install -e .
+uv pip install -e .
 ```
 
 ## Quick Start
+
+### Set your API key
+
+```bash
+export ANTHROPIC_API_KEY="your-api-key-here"
+```
 
 ```bash
 # 1. Search for a podcast
