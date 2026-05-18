@@ -24,28 +24,13 @@ source .venv/bin/activate
 uv pip install -e .
 ```
 
-## Quick Start
+## Usage
 
 ### Set your API key
 
 ```bash
 export ANTHROPIC_API_KEY="your-api-key-here"
 ```
-
-```bash
-# 1. Search for a podcast
-podtext search "hard fork"
-
-# 2. List recent episodes using the feed URL from search results
-podtext episodes "https://example.com/feed.xml"
-
-# 3. Transcribe episode #1
-podtext transcribe "https://example.com/feed.xml" 1
-```
-
-The output markdown file is saved to `.podtext/output/<podcast>/<episode>.md`.
-
-## Usage
 
 ### Search for podcasts
 
