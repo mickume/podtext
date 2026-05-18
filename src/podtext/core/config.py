@@ -1,7 +1,6 @@
 """Configuration management for Podtext.
 
-Handles TOML configuration loading from local and global paths,
-with environment variable precedence for sensitive values.
+Handles TOML configuration loading from local and global paths.
 
 Requirements: 8.1, 8.2, 8.3, 8.4, 8.5
 """
@@ -20,9 +19,6 @@ GLOBAL_CONFIG_PATH = Path.home() / ".podtext" / "config"
 
 # Default configuration values
 DEFAULT_CONFIG: dict[str, Any] = {
-    "api": {
-        "anthropic_key": "",
-    },
     "storage": {
         "media_dir": ".podtext/downloads/",
         "output_dir": ".podtext/output/",
@@ -39,13 +35,6 @@ VALID_WHISPER_MODELS = {"tiny", "base", "small", "medium", "large"}
 
 class ConfigError(Exception):
     """Raised when configuration is invalid or cannot be loaded."""
-
-
-@dataclass
-class ApiConfig:
-    """API configuration settings."""
-
-    anthropic_key: str = ""
 
 
 @dataclass
@@ -72,23 +61,12 @@ class Config:
     local and global config files with environment variable overrides.
     """
 
-    api: ApiConfig = field(default_factory=ApiConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
     whisper: WhisperConfig = field(default_factory=WhisperConfig)
 
     def get_anthropic_key(self) -> str:
-        """Get the Anthropic API key with environment variable precedence.
-
-        Returns:
-            The API key from ANTHROPIC_API_KEY env var if set,
-            otherwise the value from config file.
-
-        Validates: Requirements 8.5
-        """
-        env_key = os.environ.get("ANTHROPIC_API_KEY", "")
-        if env_key:
-            return env_key
-        return self.api.anthropic_key
+        """Get the Anthropic API key from the ANTHROPIC_API_KEY environment variable."""
+        return os.environ.get("ANTHROPIC_API_KEY", "")
 
     def get_media_dir(self) -> Path:
         """Get the media directory as a Path object."""
@@ -106,11 +84,6 @@ def _generate_default_config_toml() -> str:
         TOML-formatted string with default configuration values.
     """
     return """# Podtext Configuration File
-
-[api]
-# Anthropic API key for Claude integration
-# Environment variable ANTHROPIC_API_KEY takes precedence
-anthropic_key = ""
 
 [storage]
 # Directory for downloaded media files
@@ -224,14 +197,10 @@ def _dict_to_config(config_dict: dict[str, Any]) -> Config:
     Returns:
         Config object with values from dictionary.
     """
-    api_dict = config_dict.get("api", {})
     storage_dict = config_dict.get("storage", {})
     whisper_dict = config_dict.get("whisper", {})
 
     return Config(
-        api=ApiConfig(
-            anthropic_key=api_dict.get("anthropic_key", ""),
-        ),
         storage=StorageConfig(
             media_dir=storage_dict.get("media_dir", ".podtext/downloads/"),
             output_dir=storage_dict.get("output_dir", ".podtext/output/"),
@@ -258,9 +227,6 @@ def load_config(
     If no configuration exists, creates local config with defaults.
     Global config is never auto-created and must be set up manually by the user.
 
-    Environment variable ANTHROPIC_API_KEY always takes precedence
-    over config file values when accessed via Config.get_anthropic_key().
-
     Args:
         local_path: Override path for local config file.
         global_path: Override path for global config file.
@@ -278,9 +244,7 @@ def load_config(
     global_path = global_path or GLOBAL_CONFIG_PATH
 
     # Start with defaults
-    merged_config = DEFAULT_CONFIG.copy()
     merged_config = {
-        "api": DEFAULT_CONFIG["api"].copy(),
         "storage": DEFAULT_CONFIG["storage"].copy(),
         "whisper": DEFAULT_CONFIG["whisper"].copy(),
     }

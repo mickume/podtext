@@ -1,10 +1,5 @@
 # Podtext Configuration File
 
-[api]
-# Anthropic API key for Claude integration
-# Environment variable ANTHROPIC_API_KEY takes precedence
-anthropic_key = ""
-
 [storage]
 # Directory for downloaded media files
 media_dir = ".podtext/downloads/"

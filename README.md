@@ -108,20 +108,15 @@ Podtext uses a TOML configuration file. On first run, it creates `.podtext/confi
 
 ### API key
 
-Set via environment variable (recommended):
+Set via environment variable:
 
 ```bash
 export ANTHROPIC_API_KEY="your-key-here"
 ```
 
-Or in the config file under `[api]`. The environment variable always takes precedence.
-
 ### Full configuration reference
 
 ```toml
-[api]
-anthropic_key = ""                    # Anthropic API key (env var preferred)
-
 [storage]
 media_dir = ".podtext/downloads/"     # Where downloaded audio is stored
 output_dir = ".podtext/output/"       # Where markdown output is saved

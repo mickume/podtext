@@ -85,7 +85,7 @@ def _create_client(api_key: str) -> anthropic.Anthropic:
     if not api_key:
         raise ClaudeAPIUnavailableError(
             "Anthropic API key not configured. "
-            "Set ANTHROPIC_API_KEY environment variable or configure in .podtext/config"
+            "Set the ANTHROPIC_API_KEY environment variable."
         )
     return anthropic.Anthropic(api_key=api_key)
 

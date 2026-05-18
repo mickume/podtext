@@ -436,7 +436,6 @@ class TestConfigFileCreation:
         assert local_path.exists()
         assert not global_path.exists()
         content = local_path.read_text()
-        assert "[api]" in content
         assert "[storage]" in content
         assert "[whisper]" in content
 
@@ -447,9 +446,6 @@ class TestConfigFileCreation:
         global_path.parent.mkdir(parents=True)
 
         original_content = """
-[api]
-anthropic_key = "my-custom-key"
-
 [whisper]
 model = "large"
 """
@@ -462,7 +458,6 @@ model = "large"
         )
 
         # Config should use existing values
-        assert config.api.anthropic_key == "my-custom-key"
         assert config.whisper.model == "large"
 
         # File content should not be changed
@@ -972,16 +967,10 @@ class TestEnvironmentVariableIntegration:
     Validates: Requirement 10.4
     """
 
-    def test_env_var_overrides_config_file(self, temp_config_dir: Path) -> None:
-        """Test that ANTHROPIC_API_KEY env var overrides config file."""
+    def test_env_var_provides_api_key(self, temp_config_dir: Path) -> None:
+        """Test that ANTHROPIC_API_KEY env var provides the API key."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
-        global_path.parent.mkdir(parents=True)
-
-        global_path.write_text("""
-[api]
-anthropic_key = "config-file-key"
-""")
 
         os.environ["ANTHROPIC_API_KEY"] = "env-var-key"
         try:
@@ -991,23 +980,16 @@ anthropic_key = "config-file-key"
                 auto_create_local=False,
             )
 
-            # get_anthropic_key should return env var value
             assert config.get_anthropic_key() == "env-var-key"
         finally:
             del os.environ["ANTHROPIC_API_KEY"]
 
-    def test_config_file_used_when_env_var_not_set(
+    def test_no_api_key_when_env_var_not_set(
         self, temp_config_dir: Path, clean_env: None
     ) -> None:
-        """Test that config file value is used when env var is not set."""
+        """Test that no API key is returned when env var is not set."""
         local_path = temp_config_dir / "local" / "config"
         global_path = temp_config_dir / "global" / "config"
-        global_path.parent.mkdir(parents=True)
-
-        global_path.write_text("""
-[api]
-anthropic_key = "config-file-key"
-""")
 
         config = load_config(
             local_path=local_path,
@@ -1015,7 +997,7 @@ anthropic_key = "config-file-key"
             auto_create_local=False,
         )
 
-        assert config.get_anthropic_key() == "config-file-key"
+        assert config.get_anthropic_key() == ""
 
 
 # ============================================================================

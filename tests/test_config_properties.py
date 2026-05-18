@@ -59,9 +59,6 @@ path_string_strategy = st.from_regex(
 def config_dict_strategy(draw: st.DrawFn) -> dict[str, Any]:
     """Generate a valid configuration dictionary."""
     return {
-        "api": {
-            "anthropic_key": draw(toml_safe_string_strategy),
-        },
         "storage": {
             "media_dir": draw(path_string_strategy),
             "output_dir": draw(path_string_strategy),
@@ -163,13 +160,6 @@ class TestConfigLoadingPriority:
                 )
 
                 # Property: Local values SHALL be used for all keys present in local config
-                # Check API section
-                assert config.api.anthropic_key == local_config["api"]["anthropic_key"], (
-                    f"Local anthropic_key '{local_config['api']['anthropic_key']}' "
-                    f"should override global '{global_config['api']['anthropic_key']}', "
-                    f"but got '{config.api.anthropic_key}'"
-                )
-
                 # Check storage section
                 assert config.storage.media_dir == local_config["storage"]["media_dir"], (
                     f"Local media_dir '{local_config['storage']['media_dir']}' "
@@ -301,13 +291,12 @@ class TestConfigLoadingPriority:
 # =============================================================================
 
 
-class TestEnvironmentVariablePrecedence:
-    """Property 12: Environment Variable Precedence
+class TestEnvironmentVariableApiKey:
+    """Property 12: Environment Variable API Key
 
-    Feature: podtext, Property 12: Environment Variable Precedence
+    Feature: podtext, Property 12: Environment Variable API Key
 
-    For any ANTHROPIC_API_KEY environment variable value V,
-    the Claude API client SHALL use V regardless of config file value.
+    The API key SHALL only be read from the ANTHROPIC_API_KEY environment variable.
 
     **Validates: Requirements 8.5**
     """
@@ -315,77 +304,15 @@ class TestEnvironmentVariablePrecedence:
     @settings(max_examples=100)
     @given(
         env_value=non_empty_string_strategy,
-        config_value=toml_safe_string_strategy,
     )
-    def test_env_var_overrides_config_value(
+    def test_env_var_provides_api_key(
         self,
         env_value: str,
-        config_value: str,
     ) -> None:
-        """Property 12: Environment Variable Precedence
-
-        Feature: podtext, Property 12: Environment Variable Precedence
+        """Property 12: Environment Variable API Key
 
         For any ANTHROPIC_API_KEY environment variable value V,
-        the Claude API client SHALL use V regardless of config file value.
-
-        **Validates: Requirements 8.5**
-        """
-        # Assume env_value is non-empty (empty env var falls back to config)
-        assume(env_value.strip() != "")
-
-        original_env = os.environ.get("ANTHROPIC_API_KEY")
-        try:
-            base_dir, local_path, global_path = create_temp_config_dirs()
-
-            try:
-                # Escape the config value for TOML
-                escaped_config = config_value.replace("\\", "\\\\").replace('"', '\\"')
-                global_path.write_text(f'[api]\nanthropic_key = "{escaped_config}"')
-
-                # Set the environment variable
-                os.environ["ANTHROPIC_API_KEY"] = env_value
-
-                config = load_config(
-                    local_path=local_path,
-                    global_path=global_path,
-                    auto_create_local=False,
-                )
-
-                # Property: get_anthropic_key() SHALL return env var value V
-                actual_key = config.get_anthropic_key()
-                assert actual_key == env_value, (
-                    f"Environment variable value '{env_value}' should be used, "
-                    f"but got '{actual_key}' (config value was '{config_value}')"
-                )
-            finally:
-                import shutil
-
-                shutil.rmtree(base_dir, ignore_errors=True)
-        finally:
-            if original_env is not None:
-                os.environ["ANTHROPIC_API_KEY"] = original_env
-            elif "ANTHROPIC_API_KEY" in os.environ:
-                del os.environ["ANTHROPIC_API_KEY"]
-
-    @settings(max_examples=100)
-    @given(
-        env_value=non_empty_string_strategy,
-        local_config_value=toml_safe_string_strategy,
-        global_config_value=toml_safe_string_strategy,
-    )
-    def test_env_var_overrides_both_local_and_global(
-        self,
-        env_value: str,
-        local_config_value: str,
-        global_config_value: str,
-    ) -> None:
-        """Property 12: Environment Variable Precedence - Both Configs
-
-        Feature: podtext, Property 12: Environment Variable Precedence
-
-        For any ANTHROPIC_API_KEY environment variable value V,
-        the Claude API client SHALL use V regardless of BOTH local and global config values.
+        get_anthropic_key() SHALL return V.
 
         **Validates: Requirements 8.5**
         """
@@ -393,139 +320,34 @@ class TestEnvironmentVariablePrecedence:
 
         original_env = os.environ.get("ANTHROPIC_API_KEY")
         try:
-            base_dir, local_path, global_path = create_temp_config_dirs()
+            os.environ["ANTHROPIC_API_KEY"] = env_value
 
-            try:
-                # Escape values for TOML
-                escaped_local = local_config_value.replace("\\", "\\\\").replace('"', '\\"')
-                escaped_global = global_config_value.replace("\\", "\\\\").replace('"', '\\"')
+            config = load_config(auto_create_local=False)
 
-                global_path.write_text(f'[api]\nanthropic_key = "{escaped_global}"')
-                local_path.write_text(f'[api]\nanthropic_key = "{escaped_local}"')
-
-                # Set the environment variable
-                os.environ["ANTHROPIC_API_KEY"] = env_value
-
-                config = load_config(
-                    local_path=local_path,
-                    global_path=global_path,
-                    auto_create_local=False,
-                )
-
-                # Property: get_anthropic_key() SHALL return env var value V
-                actual_key = config.get_anthropic_key()
-                assert actual_key == env_value, (
-                    f"Environment variable value '{env_value}' should be used, "
-                    f"but got '{actual_key}' "
-                    f"(local config: '{local_config_value}', "
-                    f"global config: '{global_config_value}')"
-                )
-            finally:
-                import shutil
-
-                shutil.rmtree(base_dir, ignore_errors=True)
+            actual_key = config.get_anthropic_key()
+            assert actual_key == env_value, (
+                f"Environment variable value '{env_value}' should be used, "
+                f"but got '{actual_key}'"
+            )
         finally:
             if original_env is not None:
                 os.environ["ANTHROPIC_API_KEY"] = original_env
             elif "ANTHROPIC_API_KEY" in os.environ:
                 del os.environ["ANTHROPIC_API_KEY"]
 
-    @settings(max_examples=100)
-    @given(
-        env_value=non_empty_string_strategy,
-    )
-    def test_env_var_used_when_no_config_exists(
-        self,
-        env_value: str,
-    ) -> None:
-        """Property 12: Environment Variable Precedence - No Config
-
-        Feature: podtext, Property 12: Environment Variable Precedence
-
-        For any ANTHROPIC_API_KEY environment variable value V,
-        the Claude API client SHALL use V even when no config file exists.
+    def test_no_api_key_when_env_var_not_set(self) -> None:
+        """When ANTHROPIC_API_KEY is not set, get_anthropic_key() SHALL return empty string.
 
         **Validates: Requirements 8.5**
         """
-        assume(env_value.strip() != "")
-
-        original_env = os.environ.get("ANTHROPIC_API_KEY")
-        try:
-            base_dir = Path(tempfile.mkdtemp())
-            unique_id = str(uuid.uuid4())[:8]
-            local_path = base_dir / f"nonexistent_local_{unique_id}" / "config"
-            global_path = base_dir / f"nonexistent_global_{unique_id}" / "config"
-
-            try:
-                # Set the environment variable
-                os.environ["ANTHROPIC_API_KEY"] = env_value
-
-                config = load_config(
-                    local_path=local_path,
-                    global_path=global_path,
-                    auto_create_local=False,
-                )
-
-                # Property: get_anthropic_key() SHALL return env var value V
-                actual_key = config.get_anthropic_key()
-                assert actual_key == env_value, (
-                    f"Environment variable value '{env_value}' should be used, "
-                    f"but got '{actual_key}'"
-                )
-            finally:
-                import shutil
-
-                shutil.rmtree(base_dir, ignore_errors=True)
-        finally:
-            if original_env is not None:
-                os.environ["ANTHROPIC_API_KEY"] = original_env
-            elif "ANTHROPIC_API_KEY" in os.environ:
-                del os.environ["ANTHROPIC_API_KEY"]
-
-    @settings(max_examples=100)
-    @given(
-        config_value=non_empty_string_strategy,
-    )
-    def test_config_value_used_when_env_var_not_set(
-        self,
-        config_value: str,
-    ) -> None:
-        """Property 12: Environment Variable Precedence - Fallback
-
-        Feature: podtext, Property 12: Environment Variable Precedence
-
-        When ANTHROPIC_API_KEY environment variable is NOT set,
-        the config file value SHALL be used.
-
-        **Validates: Requirements 8.5**
-        """
-        assume(config_value.strip() != "")
-
         original_env = os.environ.pop("ANTHROPIC_API_KEY", None)
         try:
-            base_dir, local_path, global_path = create_temp_config_dirs()
+            config = load_config(auto_create_local=False)
 
-            try:
-                # Escape the config value for TOML
-                escaped_config = config_value.replace("\\", "\\\\").replace('"', '\\"')
-                global_path.write_text(f'[api]\nanthropic_key = "{escaped_config}"')
-
-                config = load_config(
-                    local_path=local_path,
-                    global_path=global_path,
-                    auto_create_local=False,
-                )
-
-                # When env var is not set, config value SHALL be used
-                actual_key = config.get_anthropic_key()
-                assert actual_key == config_value, (
-                    f"Config value '{config_value}' should be used when env var not set, "
-                    f"but got '{actual_key}'"
-                )
-            finally:
-                import shutil
-
-                shutil.rmtree(base_dir, ignore_errors=True)
+            actual_key = config.get_anthropic_key()
+            assert actual_key == "", (
+                f"Expected empty string when env var not set, but got '{actual_key}'"
+            )
         finally:
             if original_env is not None:
                 os.environ["ANTHROPIC_API_KEY"] = original_env
